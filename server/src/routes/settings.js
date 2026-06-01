@@ -20,6 +20,7 @@ router.patch('/', async (request, response) => {
   if ('includeSaturday' in request.body) update.includeSaturday = Boolean(request.body.includeSaturday);
   if ('includeSunday' in request.body) update.includeSunday = Boolean(request.body.includeSunday);
   if ('anchorTaskId' in request.body) update.anchorTaskId = request.body.anchorTaskId || null;
+  if ('notificationsEnabled' in request.body) update.notificationsEnabled = Boolean(request.body.notificationsEnabled);
 
   const settings = await Setting.findOneAndUpdate(
     { userId: request.user._id },

@@ -9,7 +9,8 @@ export const MOCK_USER: User = {
 
 export const MOCK_SETTINGS: Settings = {
   includeSaturday: false,
-  includeSunday: false
+  includeSunday: false,
+  notificationsEnabled: true
 };
 
 export const MOCK_TASKS: Task[] = [

@@ -9,6 +9,7 @@ export type Settings = {
   includeSaturday: boolean;
   includeSunday: boolean;
   anchorTaskId?: string | null;
+  notificationsEnabled?: boolean;
 };
 
 export type Task = {

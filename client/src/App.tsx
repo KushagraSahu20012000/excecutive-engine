@@ -110,6 +110,50 @@ function hasTwoWeekDrop(weekly: { percent: number }[]) {
   return currentWeek.percent < lastWeek.percent && lastWeek.percent < twoWeeksAgo.percent;
 }
 
+const notificationStamp = () => format(new Date(), 'yyyy-MM-dd');
+const notificationKey = (kind: string, id = notificationStamp()) => `executive-engine:${kind}:${id}`;
+
+function notificationsAllowed(settings: Settings) {
+  return settings.notificationsEnabled !== false && typeof window !== 'undefined' && 'Notification' in window;
+}
+
+async function ensureNotificationPermission() {
+  if (typeof window === 'undefined' || !('Notification' in window)) return false;
+  if (Notification.permission === 'granted') return true;
+  if (Notification.permission === 'denied') return false;
+  return (await Notification.requestPermission()) === 'granted';
+}
+
+async function showBrowserNotification(title: string, options: NotificationOptions = {}) {
+  if (!(await ensureNotificationPermission())) return false;
+  new Notification(title, { icon: '/vite.svg', requireInteraction: true, ...options });
+  return true;
+}
+
+function markNotificationSent(key: string) {
+  window.localStorage.setItem(key, new Date().toISOString());
+}
+
+function notificationWasSent(key: string) {
+  return window.localStorage.getItem(key) !== null;
+}
+
+function scheduleDaily(hour: number, minute: number, callback: () => void) {
+  let timeoutId = 0;
+  const scheduleNext = () => {
+    const now = new Date();
+    const next = new Date(now);
+    next.setHours(hour, minute, 0, 0);
+    if (next <= now) next.setDate(next.getDate() + 1);
+    timeoutId = window.setTimeout(() => {
+      callback();
+      scheduleNext();
+    }, next.getTime() - now.getTime());
+  };
+  scheduleNext();
+  return () => window.clearTimeout(timeoutId);
+}
+
 function dateKeyFromValue(value?: string) {
   return value ? format(parseISO(value), 'yyyy-MM-dd') : todayKey();
 }
@@ -907,6 +951,12 @@ function SettingsPage({ settings, tasks, onChange, onRemoveTask }: { settings: S
         <label className="toggle-row"><span>Include Saturday</span><input type="checkbox" checked={settings.includeSaturday} onChange={(e) => onChange({ ...settings, includeSaturday: e.target.checked })} /></label>
         <label className="toggle-row"><span>Include Sunday</span><input type="checkbox" checked={settings.includeSunday} onChange={(e) => onChange({ ...settings, includeSunday: e.target.checked })} /></label>
       </article>
+      <article className="card compact settings-card span-12">
+        <p className="eyebrow">Notifications</p>
+        <h2>Reminder panel</h2>
+        <label className="toggle-row"><span>Deadlines, nightly checks, and system warnings</span><input type="checkbox" checked={settings.notificationsEnabled !== false} onChange={(e) => onChange({ ...settings, notificationsEnabled: e.target.checked })} /></label>
+        <p className="settings-note">Keeps deadlines in your notification panel and reminds you at 11 PM, then again at 11:45 PM if anything is still unchecked.</p>
+      </article>
       <article className="card compact span-12">
         <h2>Delete Tasks</h2>
         <div className="task-list settings-task-list">
@@ -1017,6 +1067,7 @@ export function App() {
   }
 
   async function saveSettings(next: Settings) {
+    if (next.notificationsEnabled !== false) void ensureNotificationPermission();
     if (demo || !user) {
       setSettings(next);
       return;
@@ -1046,9 +1097,72 @@ export function App() {
         if (!hasTwoWeekDrop(stats.weekly)) return;
         setAutoResetOpened(true);
         openReset('today');
+        if (notificationsAllowed(settings)) {
+          const key = notificationKey('two-week-drop', notificationStamp());
+          if (!notificationWasSent(key)) {
+            void showBrowserNotification('Change the system before it is too late', {
+              body: 'Your completion has gone down for two weeks. Open Executive Engine and adjust the system now.',
+              tag: 'executive-engine-two-week-drop'
+            }).then((sent) => { if (sent) markNotificationSent(key); });
+          }
+        }
       })
       .catch(() => undefined);
-  }, [autoResetOpened, demo, loading, user]);
+  }, [autoResetOpened, demo, loading, settings, user]);
+
+  useEffect(() => {
+    if (loading || !user || demo || !notificationsAllowed(settings)) return;
+
+    async function notifyDeadlines() {
+      const data = await api<{ deadlines: Deadline[] }>('/api/deadlines').catch(() => null);
+      if (!data) return;
+      data.deadlines
+        .filter((deadline) => deadline.outcome === 'pending')
+        .forEach((deadline) => {
+          const key = notificationKey('deadline', `${deadline._id}:${notificationStamp()}`);
+          if (notificationWasSent(key)) return;
+          void showBrowserNotification(`Deadline: ${deadline.title}`, {
+            body: `Due ${format(parseISO(deadline.dueAt), 'PPp')}. Keep this visible until you pass or fail it.`,
+            tag: `executive-engine-deadline-${deadline._id}`
+          }).then((sent) => { if (sent) markNotificationSent(key); });
+        });
+    }
+
+    async function nightlyStatusCheck(onlyIfMissed: boolean) {
+      const today = todayKey();
+      const [taskData, goalData] = await Promise.all([
+        api<{ tasks: Task[]; completions: Completion[] }>('/api/tasks').catch(() => null),
+        api<{ goals: Goal[] }>('/api/goals').catch(() => null)
+      ]);
+      if (!taskData || !goalData) return;
+      const completedTaskIds = new Set(taskData.completions.filter((completion) => completion.date === today).map((completion) => completion.taskId));
+      const missedTasks = taskData.tasks.filter((task) => !completedTaskIds.has(task._id));
+      const goalActions = goalData.goals.flatMap((goal) => goal.actions.map((action) => ({ goal, action })));
+      const completedGoalActionIds = new Set(goalData.goals.flatMap((goal) => goal.completions.filter((completion) => completion.date === today).map((completion) => completion.actionId)));
+      const missedGoalActions = goalActions.filter(({ action }) => !completedGoalActionIds.has(action._id));
+      if (!taskData.tasks.length && !goalActions.length) return;
+      if (onlyIfMissed && !missedTasks.length && !missedGoalActions.length) return;
+      const kind = onlyIfMissed ? 'nightly-missed' : 'nightly-update';
+      const key = notificationKey(kind, today);
+      if (notificationWasSent(key)) return;
+      const title = onlyIfMissed ? 'You still have unchecked updates' : 'Update your task status';
+      const body = missedGoalActions.length
+        ? `${missedTasks.length} tasks and ${missedGoalActions.length} goal actions need today's status.`
+        : `${missedTasks.length} tasks need today's status.`;
+      void showBrowserNotification(title, { body, tag: `executive-engine-${kind}` }).then((sent) => { if (sent) markNotificationSent(key); });
+    }
+
+    void ensureNotificationPermission().then((allowed) => { if (allowed) void notifyDeadlines(); });
+    const deadlineInterval = window.setInterval(() => void notifyDeadlines(), 60 * 60 * 1000);
+    const clearNightlyUpdate = scheduleDaily(23, 0, () => void nightlyStatusCheck(false));
+    const clearNightlyMissed = scheduleDaily(23, 45, () => void nightlyStatusCheck(true));
+
+    return () => {
+      window.clearInterval(deadlineInterval);
+      clearNightlyUpdate();
+      clearNightlyMissed();
+    };
+  }, [demo, loading, settings, user]);
 
   const isDemoTour = !user && !showAuth;
   const activeDemoStep = DEMO_STEPS[demoStepIndex];

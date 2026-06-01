@@ -141,6 +141,7 @@ button:active { transform: translateY(1px); }
 .compact { display: grid; gap: 12px; }
 .settings-card { border-top: 0; padding-top: 8px; }
 .settings-card .eyebrow { margin-bottom: 16px; }
+.settings-note { margin: 12px 0 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
 .help-card h1 { margin: 0; max-width: 560px; font: 650 clamp(31px, 6vw, 44px)/1 Literata, ui-serif, Georgia, serif; }
 .help-card h2 { margin: 0 0 18px; font: 700 25px/1.08 Literata, ui-serif, Georgia, serif; }
 .help-card p { margin: 0; color: var(--muted); font-size: 16px; line-height: 1.6; }
