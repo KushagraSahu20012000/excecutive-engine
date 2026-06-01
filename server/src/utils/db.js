@@ -1,9 +1,22 @@
 import mongoose from 'mongoose';
 
 const connectionStates = ['disconnected', 'connected', 'connecting', 'disconnecting'];
+let lastConnectionError = null;
+
+function sanitizeError(error) {
+  if (!error) return null;
+  return {
+    name: error.name || 'Error',
+    code: error.code || error.codeName || undefined,
+    message: error.message || 'MongoDB connection failed'
+  };
+}
 
 export function getDbStatus() {
-  return connectionStates[mongoose.connection.readyState] || 'unknown';
+  return {
+    state: connectionStates[mongoose.connection.readyState] || 'unknown',
+    error: lastConnectionError
+  };
 }
 
 export function isDbConnected() {
@@ -14,10 +27,18 @@ export async function connectDb() {
   const uri = process.env.MONGODB_URI;
 
   if (!uri) {
-    throw new Error('MONGODB_URI is required');
+    const error = new Error('MONGODB_URI is required');
+    lastConnectionError = sanitizeError(error);
+    throw error;
   }
 
   mongoose.set('strictQuery', true);
-  await mongoose.connect(uri, { serverSelectionTimeoutMS: 10000 });
+  try {
+    await mongoose.connect(uri, { serverSelectionTimeoutMS: 10000 });
+  } catch (error) {
+    lastConnectionError = sanitizeError(error);
+    throw error;
+  }
+  lastConnectionError = null;
   console.log('MongoDB connected');
 }
