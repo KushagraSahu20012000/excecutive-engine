@@ -3,14 +3,66 @@ import { addDays, differenceInSeconds, format, isBefore, parseISO } from 'date-f
 import { AnimatePresence, motion } from 'framer-motion';
 import { BarChart3, CalendarClock, Check, ChevronDown, Flame, Goal as GoalIcon, HelpCircle, Home, LogOut, Plus, Settings2, Star, Trash2 } from 'lucide-react';
 import { Bar, BarChart, Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { ApiError, api, jsonBody } from './api';
-import { MOCK_DEADLINES, MOCK_GOALS, MOCK_SETTINGS, MOCK_STATS, MOCK_TASKS, MOCK_USER } from './mockData';
+import { api, jsonBody } from './api';
+import { MOCK_DEADLINES, MOCK_GOALS, MOCK_SETTINGS, MOCK_STATS, MOCK_TASKS } from './mockData';
 import type { Completion, Deadline, Goal, Settings, Task, User } from './types';
 
 const todayKey = () => format(new Date(), 'yyyy-MM-dd');
 const CHART_COLORS = ['#0b46d8', '#e86744', '#a0a8c0'];
 type Tab = 'today' | 'goals' | 'deadlines' | 'stats' | 'settings' | 'help' | 'reset';
 type StatsPayload = { weekly: { label: string; percent: number }[]; deadlineRatio: { name: string; value: number }[]; missedTasks: { title: string; missed: number }[]; deadlineLeadTime: { label: string; count: number }[]; streak: number };
+
+const TOUR_STEPS = [
+  {
+    eyebrow: 'Step 1 of 7',
+    title: 'Start with Today',
+    body: 'Today is the daily operating page. It keeps the day small: a few repeating actions, a weekly completion score, and one place to mark progress without rebuilding your plan every morning.',
+    focus: 'today',
+    details: ['Tap the checkbox to mark a task done for the current day.', 'Use Add to create a repeating daily task.', 'The progress line shows how many weekly checks you have earned.']
+  },
+  {
+    eyebrow: 'Step 2 of 7',
+    title: 'Pick one anchor task',
+    body: 'The star marks your non-negotiable task. If the day gets chaotic, this is the one action you still protect because it keeps the system alive.',
+    focus: 'anchor',
+    details: ['Tap the star beside a task to make it your anchor.', 'Tap it again to remove the anchor.', 'Your anchor helps you decide what matters when energy is low.']
+  },
+  {
+    eyebrow: 'Step 3 of 7',
+    title: 'Build goals from daily actions',
+    body: 'Goals are long-range outcomes broken into daily action plans. Each goal opens into actions, notes, and a small progress history so you can see what is actually moving.',
+    focus: 'goals',
+    details: ['Tap a goal card to open it.', 'Add daily actions that make the goal real.', 'Use Works and Doesnt notes to record what helps or blocks you.']
+  },
+  {
+    eyebrow: 'Step 4 of 7',
+    title: 'Track deadlines with pressure',
+    body: 'Deadlines keep time-sensitive responsibilities visible. Each deadline shows how much time remains and lets you mark the outcome once it is handled.',
+    focus: 'deadlines',
+    details: ['Add a title and due date for each deadline.', 'Mark Pass when you complete it before the deadline.', 'Mark Fail when it is missed so your stats stay honest.']
+  },
+  {
+    eyebrow: 'Step 5 of 7',
+    title: 'Read the stats as feedback',
+    body: 'Stats turn your behavior into data: streaks, weekly completion, missed tasks, deadline outcomes, and how early you usually pass deadlines.',
+    focus: 'stats',
+    details: ['Weekly completion shows whether your system is sustainable.', 'Most missed tasks show what needs to be smaller or clearer.', 'Pass timing shows whether you finish early or at the last minute.']
+  },
+  {
+    eyebrow: 'Step 6 of 7',
+    title: 'Use settings and help deliberately',
+    body: 'Settings shape your week, and Help explains how to choose good daily tasks. These controls keep the system realistic instead of overloaded.',
+    focus: 'settings',
+    details: ['Use Settings to include or exclude weekend days.', 'Delete tasks that no longer belong in your daily system.', 'Open Help when you need to decide what deserves a daily slot.']
+  },
+  {
+    eyebrow: 'Step 7 of 7',
+    title: 'Register when you are ready',
+    body: 'Your account saves tasks, goals, deadlines, notes, settings, completions, and stats. After registration, this becomes your personal execution system instead of a tour.',
+    focus: 'register',
+    details: ['Create an account with email and password.', 'Your JWT session is stored in an HTTP-only cookie.', 'Your data is saved to MongoDB and restored across devices.']
+  }
+] as const;
 
 function hasTwoWeekDrop(weekly: { percent: number }[]) {
   if (weekly.length < 3) return false;
@@ -42,8 +94,65 @@ function goalProgressData(goal: Goal) {
   return { series, current };
 }
 
-function Login({ onAuth }: { onAuth: (user: User) => void }) {
-  const [mode, setMode] = useState<'login' | 'signup'>('login');
+function AppIntroTour({ onComplete }: { onComplete: () => void }) {
+  const [stepIndex, setStepIndex] = useState(0);
+  const step = TOUR_STEPS[stepIndex];
+  const isFinalStep = stepIndex === TOUR_STEPS.length - 1;
+
+  function nextStep() {
+    if (isFinalStep) {
+      onComplete();
+      return;
+    }
+    setStepIndex((current) => current + 1);
+  }
+
+  return (
+    <main className="tour-screen">
+      <section className="tour-shell">
+        <div className="tour-copy">
+          <p className="brand-mark">Executive Engine</p>
+          <p className="eyebrow">{step.eyebrow}</p>
+          <h1>{step.title}</h1>
+          <p>{step.body}</p>
+          <div className="tour-detail-list">
+            {step.details.map((detail) => <button key={detail} type="button" onClick={nextStep}>{detail}</button>)}
+          </div>
+          <div className="tour-actions">
+            <button type="button" className="primary-action" onClick={nextStep}>{isFinalStep ? 'Register now' : 'Next step'}</button>
+            {stepIndex > 0 && <button type="button" className="secondary-action" onClick={() => setStepIndex((current) => current - 1)}>Back</button>}
+          </div>
+        </div>
+        <div className="tour-preview" aria-label="Executive Engine app tour preview">
+          <div className="tour-phone">
+            <div className="tour-topbar"><span>Executive Engine</span><strong>Preview</strong></div>
+            <div className={`tour-card ${step.focus === 'today' ? 'is-highlighted' : ''}`}>
+              <span>Today</span>
+              <strong>Possible victory</strong>
+              <div className="tour-progress"><i /></div>
+            </div>
+            <div className="tour-task-row"><Check size={15} /><span>Morning deep work block</span><Star className={step.focus === 'anchor' ? 'is-highlighted-icon' : ''} size={17} /></div>
+            <div className="tour-task-row"><span className="tour-empty-check" /><span>Review commitments</span><Star size={17} /></div>
+            <div className={`tour-tile-grid ${step.focus === 'goals' ? 'is-highlighted' : ''}`}>
+              <div>Launch project</div>
+              <div>Sleep schedule</div>
+            </div>
+            <div className={`tour-deadline-line ${step.focus === 'deadlines' ? 'is-highlighted' : ''}`}><CalendarClock size={16} /><span>Tax return</span><b>3d left</b></div>
+            <div className={`tour-chart ${step.focus === 'stats' ? 'is-highlighted' : ''}`}><i /><i /><i /><i /></div>
+            <div className={`tour-mini-actions ${step.focus === 'settings' ? 'is-highlighted' : ''}`}><span>Help</span><span>Settings</span></div>
+            <div className={`tour-register-card ${step.focus === 'register' ? 'is-highlighted' : ''}`}>Create account</div>
+          </div>
+        </div>
+        <div className="tour-dots" aria-label="Tour progress">
+          {TOUR_STEPS.map((tourStep, index) => <button key={tourStep.title} type="button" className={index === stepIndex ? 'active' : ''} onClick={() => setStepIndex(index)} aria-label={`Open ${tourStep.title}`} />)}
+        </div>
+      </section>
+    </main>
+  );
+}
+
+function Login({ onAuth, initialMode = 'login' }: { onAuth: (user: User) => void; initialMode?: 'login' | 'signup' }) {
+  const [mode, setMode] = useState<'login' | 'signup'>(initialMode);
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -890,6 +999,7 @@ export function App() {
   const [loading, setLoading] = useState(true);
   const [demo, setDemo] = useState(false);
   const [autoResetOpened, setAutoResetOpened] = useState(false);
+  const [showAuth, setShowAuth] = useState(false);
 
   function openReset(returnTab: Exclude<Tab, 'reset'>) {
     setResetReturnTab(returnTab);
@@ -908,15 +1018,9 @@ export function App() {
   useEffect(() => {
     Promise.all([api<{ user: User }>('/api/auth/me'), api<{ settings: Settings }>('/api/settings')])
       .then(([auth, sd]) => { setUser(auth.user); setSettings(sd.settings); setDemo(false); })
-      .catch((error) => {
-        if (error instanceof ApiError && error.status === 401) {
-          setUser(null);
-          setDemo(false);
-          return;
-        }
-        setUser(MOCK_USER);
-        setSettings(MOCK_SETTINGS);
-        setDemo(true);
+      .catch(() => {
+        setUser(null);
+        setDemo(false);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -952,11 +1056,12 @@ export function App() {
   async function logout() {
     if (!demo) await api('/api/auth/logout', { method: 'POST' });
     setAutoResetOpened(false);
+    setShowAuth(false);
     setUser(null); setDemo(false);
   }
 
   if (loading) return <div className="boot-screen">Executive Engine</div>;
-  if (!user) return <Login onAuth={setUser} />;
+  if (!user) return showAuth ? <Login onAuth={setUser} initialMode="signup" /> : <AppIntroTour onComplete={() => setShowAuth(true)} />;
 
   return (
     <div className="app-shell">
