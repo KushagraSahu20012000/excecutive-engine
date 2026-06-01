@@ -6,7 +6,7 @@ import http from 'http';
 import morgan from 'morgan';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { connectDb } from './utils/db.js';
+import { connectDb, getDbStatus, isDbConnected } from './utils/db.js';
 import { initRealtime } from './utils/realtime.js';
 import authRoutes from './routes/auth.js';
 import deadlineRoutes from './routes/deadlines.js';
@@ -23,6 +23,7 @@ const port = process.env.PORT || 4000;
 const clientOrigin = process.env.CLIENT_ORIGIN || 'http://localhost:5173';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const dbRetryDelayMs = 10000;
 
 app.use(cors({ origin: clientOrigin, credentials: true }));
 app.use(express.json());
@@ -30,7 +31,16 @@ app.use(cookieParser());
 app.use(morgan('dev'));
 
 app.get('/api/health', (_request, response) => {
-  response.json({ ok: true });
+  response.json({ ok: true, database: getDbStatus() });
+});
+
+app.use('/api', (_request, response, next) => {
+  if (!isDbConnected()) {
+    response.status(503).json({ message: 'Database unavailable', database: getDbStatus() });
+    return;
+  }
+
+  next();
 });
 
 app.use('/api/auth', authRoutes);
@@ -59,8 +69,16 @@ app.use((error, _request, response, _next) => {
 
 initRealtime(server);
 
-connectDb().then(() => {
-  server.listen(port, () => {
-    console.log(`Executive Engine API running on ${port}`);
-  });
+async function connectDbWithRetry() {
+  try {
+    await connectDb();
+  } catch (error) {
+    console.error('MongoDB connection failed. Retrying soon.', error);
+    setTimeout(connectDbWithRetry, dbRetryDelayMs);
+  }
+}
+
+server.listen(port, () => {
+  console.log(`Executive Engine API running on ${port}`);
+  connectDbWithRetry();
 });
