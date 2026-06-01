@@ -12,6 +12,28 @@ Recommended package name:
 com.executiveengine.app
 ```
 
+## GitHub Releases APK
+
+This repo includes a simple Android WebView wrapper in `android/` and a GitHub Actions workflow at `.github/workflows/android-apk-release.yml`.
+
+When Android wrapper files are pushed to `main`, GitHub builds an APK and publishes it in the repository's **Releases** tab.
+
+Permanent latest-download link:
+
+```text
+https://github.com/KushagraSahu20012000/excecutive-engine/releases/latest/download/executive-engine.apk
+```
+
+You can also rebuild the APK manually from GitHub:
+
+1. Open the repository on GitHub.
+2. Go to **Actions**.
+3. Select **Android APK Release**.
+4. Click **Run workflow**.
+5. After it finishes, open **Releases** and download `executive-engine.apk`.
+
+The generated APK opens `https://excecutive-engine.onrender.com/` inside an Android app wrapper.
+
 ## What is already prepared
 
 - `client/public/manifest.webmanifest` has app metadata, scope, theme color, and PNG icons.

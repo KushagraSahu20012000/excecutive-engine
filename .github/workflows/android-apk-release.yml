@@ -1,0 +1,72 @@
+name: Android APK Release
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - android/**
+      - .github/workflows/android-apk-release.yml
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Release tag to create or update
+        required: false
+        default: android-latest
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.10.2
+
+      - name: Install Android platform
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Build APK
+        run: gradle -p android --no-daemon :app:assembleDebug
+
+      - name: Prepare release asset
+        run: |
+          mkdir -p release
+          cp android/app/build/outputs/apk/debug/app-debug.apk release/executive-engine.apk
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: executive-engine-apk
+          path: release/executive-engine.apk
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.release_tag || format('apk-{0}', github.run_number) }}
+          name: Executive Engine APK
+          body: |
+            Android APK for Executive Engine.
+
+            Direct download:
+            https://github.com/KushagraSahu20012000/excecutive-engine/releases/latest/download/executive-engine.apk
+
+            This APK opens https://excecutive-engine.onrender.com/ inside an Android app wrapper.
+          files: release/executive-engine.apk
+          make_latest: true
