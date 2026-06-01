@@ -958,7 +958,7 @@ function HelpPage() {
           <div><strong>Category-based</strong><span>A task can stand for a useful category, like cleaning or movement.</span></div>
           <div><strong>Checklist-first</strong><span>If these few things happen, today still counts.</span></div>
         </div>
-        <p className="help-note">Aim for 5 to 8 must-do items. They should matter, but they must be doable.</p>
+        <p className="help-note">Aim for 4 to 6 must-do items. They should matter, but they must be doable.</p>
       </article>
       <article className="card help-card span-12">
         <p className="eyebrow">Anchor task</p>
