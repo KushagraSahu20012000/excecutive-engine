@@ -4,3 +4,5 @@ dist
 .DS_Store
 *.log
 *.tsbuildinfo
+android/.gradle
+android/app/build
