@@ -278,6 +278,7 @@ button:hover, .primary-action:hover { background: oklch(0.24 0.02 260); }
 .goal-title-row {
   --goal-tone: oklch(0.95 0.045 84);
   position: relative;
+  container-type: inline-size;
   display: flex;
   align-items: flex-start;
   width: 170px;
@@ -302,7 +303,7 @@ button:hover, .primary-action:hover { background: oklch(0.24 0.02 260); }
 .goal-title-row[data-tone="5"] { --goal-tone: oklch(0.96 0.03 320); }
 .goal-title-row:hover { border-color: var(--ink); }
 .goal-title-row:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
-.goal-title-name { min-width: 0; color: var(--ink); font: 700 24px/1.12 Literata, ui-serif, Georgia, serif; overflow-wrap: anywhere; }
+.goal-title-name { min-width: 0; max-width: 100%; color: var(--ink); font: 700 clamp(13px, 13cqw, 24px)/1.08 Literata, ui-serif, Georgia, serif; overflow-wrap: anywhere; word-break: break-word; hyphens: auto; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
 .goal-open-button { position: absolute; left: 14px; bottom: 14px; width: auto; height: auto; border: 0; border-bottom: 1px solid currentColor; border-radius: 0; padding: 0 0 3px; background: transparent; color: var(--ink); font: 800 11px/1 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: 0.05em; text-transform: uppercase; }
 .goal-open-button span { display: inline-block; margin-left: 3px; transform: translateY(-1px); }
 .goal-open-button:hover { background: transparent; color: var(--accent); }
