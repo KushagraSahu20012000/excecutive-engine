@@ -158,6 +158,10 @@ function dateKeyFromValue(value?: string) {
   return value ? format(parseISO(value), 'yyyy-MM-dd') : todayKey();
 }
 
+function localDateTimeToIso(value: string) {
+  return new Date(value).toISOString();
+}
+
 function goalProgressData(goal: Goal) {
   const today = todayKey();
   const dates = Array.from({ length: 14 }, (_, index) => format(addDays(new Date(), index - 13), 'yyyy-MM-dd'));
@@ -477,8 +481,9 @@ function GoalsPage({ demo, demoOpenGoal = false, onOpenMessUp }: { demo: boolean
 
   async function addGoal(e: FormEvent) {
     e.preventDefault(); if (!form.title.trim()) return;
-    if (demo) { setGoals((p) => [...p, { _id: `g${Date.now()}`, ...form, actions: [], notes: [], completions: [] }]); setForm({ title: '', description: '', deadlineAt: format(addDays(new Date(), 30), "yyyy-MM-dd'T'HH:mm") }); return; }
-    await api('/api/goals', { method: 'POST', ...jsonBody(form) }); setForm({ title: '', description: '', deadlineAt: format(addDays(new Date(), 30), "yyyy-MM-dd'T'HH:mm") }); await load();
+    const payload = { ...form, deadlineAt: localDateTimeToIso(form.deadlineAt) };
+    if (demo) { setGoals((p) => [...p, { _id: `g${Date.now()}`, ...payload, actions: [], notes: [], completions: [] }]); setForm({ title: '', description: '', deadlineAt: format(addDays(new Date(), 30), "yyyy-MM-dd'T'HH:mm") }); return; }
+    await api('/api/goals', { method: 'POST', ...jsonBody(payload) }); setForm({ title: '', description: '', deadlineAt: format(addDays(new Date(), 30), "yyyy-MM-dd'T'HH:mm") }); await load();
   }
 
   function requestGoalDelete(goalId: string) {
@@ -750,8 +755,9 @@ function DeadlinesPage({ demo }: { demo: boolean }) {
 
   async function addDeadline(e: FormEvent) {
     e.preventDefault(); if (!form.title.trim()) return;
-    if (demo) { setDeadlines((p) => [...p, { _id: `d${Date.now()}`, ...form, outcome: 'pending' }]); setForm({ title: '', description: '', dueAt: format(addDays(new Date(), 7), "yyyy-MM-dd'T'HH:mm") }); return; }
-    await api('/api/deadlines', { method: 'POST', ...jsonBody(form) }); setForm({ title: '', description: '', dueAt: format(addDays(new Date(), 7), "yyyy-MM-dd'T'HH:mm") }); await load();
+    const payload = { ...form, dueAt: localDateTimeToIso(form.dueAt) };
+    if (demo) { setDeadlines((p) => [...p, { _id: `d${Date.now()}`, ...payload, outcome: 'pending' }]); setForm({ title: '', description: '', dueAt: format(addDays(new Date(), 7), "yyyy-MM-dd'T'HH:mm") }); return; }
+    await api('/api/deadlines', { method: 'POST', ...jsonBody(payload) }); setForm({ title: '', description: '', dueAt: format(addDays(new Date(), 7), "yyyy-MM-dd'T'HH:mm") }); await load();
   }
 
   async function togglePass(dl: Deadline) {
