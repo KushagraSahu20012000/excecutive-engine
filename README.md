@@ -114,8 +114,20 @@ The production client build is emitted from `client/dist`.
 
 ## Deployment Notes
 
-- Serve the Vite build from any static host or behind the Express server/proxy of your choice.
-- Run the API with `npm run start --workspace server`.
-- Configure `CLIENT_ORIGIN` to the deployed client origin.
-- Configure `MONGODB_URI` and a strong `JWT_SECRET` in production.
-- Ensure the deployed WebSocket URL is reachable by the client, using `VITE_WS_BASE_URL` if needed.
+- Recommended production setup: deploy this repo as one Render web service and use MongoDB Atlas for the database.
+- In production, Express serves the built React app from `client/dist`, handles `/api/*`, and hosts `/ws` for realtime stats on the same domain.
+- Build command: `npm ci && npm run build`.
+- Start command: `npm run start`.
+- Health check path: `/api/health`.
+- Required Render environment variables:
+
+   ```env
+   NODE_ENV=production
+   MONGODB_URI=mongodb+srv://...
+   JWT_SECRET=use-a-long-random-secret
+   CLIENT_ORIGIN=https://your-render-service.onrender.com
+   API_BASE_URL=https://your-render-service.onrender.com
+   ```
+
+- A `render.yaml` blueprint is included. If you use it, set `MONGODB_URI`, `CLIENT_ORIGIN`, and `API_BASE_URL` in Render after creating the service.
+- The client uses same-origin API requests and same-origin WebSockets by default in production, so no separate frontend host is needed.

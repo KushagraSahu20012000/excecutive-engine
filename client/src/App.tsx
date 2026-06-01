@@ -684,7 +684,7 @@ function StatsPage({ demo }: { demo: boolean }) {
     void loadStats();
 
     const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-    const wsUrl = import.meta.env.VITE_WS_BASE_URL || `${wsProtocol}://${window.location.hostname}:4000/ws`;
+    const wsUrl = import.meta.env.VITE_WS_BASE_URL || `${wsProtocol}://${window.location.host}/ws`;
     let socket: WebSocket | null = null;
     let reconnectTimer: number | null = null;
     let isDisposed = false;
