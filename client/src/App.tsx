@@ -344,6 +344,10 @@ function TodayPage({ demo, tasks, settings, setTasks, onChangeSettings, onOpenHe
             {tasks.length === 0 && (
               <div className="empty-task-help">
                 <p>Not sure what to add?</p>
+                <button className="help-recommend-button" type="button" onClick={onOpenHelp}>
+                  <HelpCircle size={17} />
+                  <span><strong>Recommended</strong><small>Open Help</small></span>
+                </button>
               </div>
             )}
             <form className="inline-form task-add-form" onSubmit={addTask}>
@@ -1112,7 +1116,7 @@ export function App() {
     <div className={`app-shell ${isDemoTour ? `is-demo-tour demo-focus-${activeDemoStep.focus}` : ''}`.trim()}>
       {(demo || isDemoTour) && <DemoBanner />}
       <header className="topbar">
-        <div><p className="eyebrow">Executive Engine</p><strong>{displayUser.displayName}</strong></div>
+        <div><p className="eyebrow">Executive Engine</p><strong>Hi, {displayUser.displayName}</strong></div>
         <div className="topbar-actions">
           <button className={`icon-button ${tab === 'help' ? 'is-active' : ''}`} onClick={() => setTab('help')} aria-label="Help"><HelpCircle size={18} /></button>
           <button className={`icon-button ${tab === 'settings' ? 'is-active' : ''}`} onClick={() => setTab('settings')} aria-label="Settings"><Settings2 size={18} /></button>
