@@ -122,6 +122,7 @@ The production client build is emitted from `client/dist`.
 - Required Render environment variables:
 
    ```env
+   NODE_VERSION=22
    NODE_ENV=production
    MONGODB_URI=mongodb+srv://...
    JWT_SECRET=use-a-long-random-secret
@@ -130,4 +131,5 @@ The production client build is emitted from `client/dist`.
    ```
 
 - A `render.yaml` blueprint is included. If you use it, set `MONGODB_URI`, `CLIENT_ORIGIN`, and `API_BASE_URL` in Render after creating the service.
+- If Atlas reports TLS handshake errors during startup, confirm the Atlas Network Access list allows Render outbound connections. For a Render free web service, use `0.0.0.0/0` unless you have a paid static outbound IP setup.
 - The client uses same-origin API requests and same-origin WebSockets by default in production, so no separate frontend host is needed.
