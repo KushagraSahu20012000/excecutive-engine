@@ -87,6 +87,23 @@ const DEMO_STEPS = [
 
 type DemoStep = (typeof DEMO_STEPS)[number];
 
+function demoTargetSelector(focus: DemoStep['focus']) {
+  const selectors: Record<DemoStep['focus'], string> = {
+    today: '.hero-card',
+    help: '.help-card:first-child',
+    reset: '.help-card:first-child',
+    checkbox: '.task-item:first-child .pencil-box',
+    anchor: '.task-item:first-child .anchor-button',
+    goals: '.goal-title-row:first-child',
+    goalDetail: '.goal-card',
+    deadlines: '.deadline-card:first-of-type',
+    stats: '.chart-card:first-of-type',
+    tabs: '.tabbar'
+  };
+
+  return selectors[focus];
+}
+
 function hasTwoWeekDrop(weekly: { percent: number }[]) {
   if (weekly.length < 3) return false;
   const [twoWeeksAgo, lastWeek, currentWeek] = weekly.slice(-3);
@@ -117,7 +134,7 @@ function goalProgressData(goal: Goal) {
   return { series, current };
 }
 
-function DemoCloud({ step, stepIndex, onNext, onSkip }: { step: DemoStep; stepIndex: number; onNext: () => void; onSkip: () => void }) {
+function DemoCloud({ step, stepIndex, onBack, onNext, onSkip }: { step: DemoStep; stepIndex: number; onBack: () => void; onNext: () => void; onSkip: () => void }) {
   const isFinalStep = stepIndex === DEMO_STEPS.length - 1;
 
   return (
@@ -126,7 +143,10 @@ function DemoCloud({ step, stepIndex, onNext, onSkip }: { step: DemoStep; stepIn
         <p className="eyebrow">Demo {stepIndex + 1} / {DEMO_STEPS.length}</p>
         <h2>{step.title}</h2>
         <p>{step.body}</p>
-        <button type="button" onClick={onNext}>{isFinalStep ? 'Create account' : 'Next'}</button>
+        <div className="demo-cloud-actions">
+          {stepIndex > 0 && <button type="button" className="secondary-action" onClick={onBack}>Back</button>}
+          <button type="button" onClick={onNext}>{isFinalStep ? 'Create account' : 'Next'}</button>
+        </div>
       </motion.section>
       <button type="button" className="demo-skip-button" onClick={onSkip}>Skip demo</button>
     </div>
@@ -1035,6 +1055,22 @@ export function App() {
     setTab(activeDemoStep.tab);
   }, [activeDemoStep.tab, isDemoTour]);
 
+  useEffect(() => {
+    if (!isDemoTour) return;
+    const timeoutId = window.setTimeout(() => {
+      const target = document.querySelector(demoTargetSelector(activeDemoStep.focus));
+      target?.scrollIntoView({ behavior: 'smooth', block: activeDemoStep.focus === 'tabs' ? 'end' : 'center' });
+    }, 120);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [activeDemoStep.focus, activeDemoStep.tab, isDemoTour]);
+
+  function previousDemoStep() {
+    const previousIndex = Math.max(0, demoStepIndex - 1);
+    setDemoStepIndex(previousIndex);
+    setTab(DEMO_STEPS[previousIndex].tab);
+  }
+
   function nextDemoStep() {
     if (demoStepIndex >= DEMO_STEPS.length - 1) {
       setShowAuth(true);
@@ -1059,7 +1095,7 @@ export function App() {
     if (tab === 'help') return <HelpPage />;
     if (tab === 'reset') return <MessUpPage onBack={() => setTab(resetReturnTab)} />;
     return <SettingsPage settings={settings} tasks={tasks} onChange={(next) => void saveSettings(next)} onRemoveTask={(taskId) => void removeTaskFromSettings(taskId)} />;
-  }, [settings, tasks, tab, effectiveDemo, resetReturnTab]);
+  }, [settings, tasks, tab, effectiveDemo, resetReturnTab, isDemoTour, activeDemoStep.focus]);
 
   async function logout() {
     if (user && !demo) await api('/api/auth/logout', { method: 'POST' });
@@ -1089,7 +1125,7 @@ export function App() {
         <TabButton active={tab === 'deadlines'} onClick={() => setTab('deadlines')} icon={<CalendarClock size={19} />} label="Deadlines" />
         <TabButton active={tab === 'stats'} onClick={() => setTab('stats')} icon={<BarChart3 size={19} />} label="Stats" />
       </nav>
-      {isDemoTour && <DemoCloud step={activeDemoStep} stepIndex={demoStepIndex} onNext={nextDemoStep} onSkip={() => setShowAuth(true)} />}
+      {isDemoTour && <DemoCloud step={activeDemoStep} stepIndex={demoStepIndex} onBack={previousDemoStep} onNext={nextDemoStep} onSkip={() => setShowAuth(true)} />}
     </div>
   );
 }
