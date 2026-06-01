@@ -227,7 +227,11 @@ button:hover, .primary-action:hover { background: oklch(0.24 0.02 260); }
 .help-recommend-button strong { font: 800 12px/1 "IBM Plex Mono", ui-monospace, monospace; text-transform: uppercase; letter-spacing: 0.06em; }
 .help-recommend-button small { color: oklch(0.93 0.012 86 / 0.72); font: 700 10px/1 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: 0.02em; }
 .help-recommend-button:hover { background: var(--accent); border-color: var(--accent); color: var(--sheet); }
-.task-add-trigger { margin-top: 48px; margin-left: auto; }
+.task-actions-footer { display: grid; justify-items: end; gap: 18px; margin-top: 48px; }
+.task-actions-footer .mess-up-guide { justify-self: end; }
+.task-add-trigger { margin-left: auto; }
+.task-add-trigger.is-subtle { border-color: var(--faint); background: transparent; color: var(--muted); box-shadow: none; }
+.task-add-trigger.is-subtle:hover { border-color: var(--accent); color: var(--accent); }
 .task-item {
   display: grid;
   grid-template-columns: 34px minmax(0, 1fr) 42px;

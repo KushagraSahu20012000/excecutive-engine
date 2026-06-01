@@ -250,7 +250,7 @@ function encouragement(p: number) {
   return 'Great going';
 }
 
-function TodayPage({ demo, tasks, settings, setTasks, onChangeSettings, onOpenHelp }: { demo: boolean; tasks: Task[]; settings: Settings; setTasks: React.Dispatch<React.SetStateAction<Task[]>>; onChangeSettings: (next: Settings) => Promise<void>; onOpenHelp: () => void }) {
+function TodayPage({ demo, tasks, settings, setTasks, onChangeSettings, onOpenHelp, onOpenMessUp }: { demo: boolean; tasks: Task[]; settings: Settings; setTasks: React.Dispatch<React.SetStateAction<Task[]>>; onChangeSettings: (next: Settings) => Promise<void>; onOpenHelp: () => void; onOpenMessUp: () => void }) {
   const [completions, setCompletions] = useState<Completion[]>([]);
   const [summary, setSummary] = useState({ completed: demo ? 7 : 0, total: demo ? 20 : 0, weekDates: [] as string[] });
   const [currentDay, setCurrentDay] = useState(todayKey());
@@ -352,7 +352,10 @@ function TodayPage({ demo, tasks, settings, setTasks, onChangeSettings, onOpenHe
             </form>
           </>
         ) : !taskLimitReached ? (
-          <button className="task-add-trigger" type="button" onClick={() => setAddingTask(true)}><Plus size={18} /> Add</button>
+          <div className="task-actions-footer">
+            <button className={`task-add-trigger ${tasks.length >= 4 ? 'is-subtle' : ''}`.trim()} type="button" onClick={() => setAddingTask(true)}><Plus size={18} /> Add</button>
+            <MessUpButton onClick={onOpenMessUp} />
+          </div>
         ) : (
           null
         )}
@@ -612,7 +615,7 @@ function MessUpPage({ onBack }: { onBack: () => void }) {
       <article className="card help-card span-12">
         <p className="eyebrow">Step 3</p>
         <h2>Create a contingency plan</h2>
-        <p>Be direct, honest, and detailed. Focus on your behavior and create specific plans for self-destructive patterns before they repeat.</p>
+        <p>Be direct, honest, and detailed. Focus on your behavior and create specific plans for self-destructive patterns before they repeat. When you reset, come back to 4 to 6 must-do items.</p>
         <div className="help-principle-grid">
           <div><strong>Trigger</strong><span>What reliably starts the slide?</span></div>
           <div><strong>Pattern</strong><span>What do you usually do next?</span></div>
@@ -1086,7 +1089,7 @@ export function App() {
   }
 
   const content = useMemo(() => {
-    if (tab === 'today') return <TodayPage demo={effectiveDemo} tasks={tasks} settings={settings} setTasks={setTasks} onChangeSettings={saveSettings} onOpenHelp={() => setTab('help')} />;
+    if (tab === 'today') return <TodayPage demo={effectiveDemo} tasks={tasks} settings={settings} setTasks={setTasks} onChangeSettings={saveSettings} onOpenHelp={() => setTab('help')} onOpenMessUp={() => openReset('today')} />;
     if (tab === 'goals') return <GoalsPage demo={effectiveDemo} demoOpenGoal={isDemoTour && activeDemoStep.focus === 'goalDetail'} onOpenMessUp={() => openReset('goals')} />;
     if (tab === 'deadlines') return <DeadlinesPage demo={effectiveDemo} />;
     if (tab === 'stats') return <StatsPage demo={effectiveDemo} />;
