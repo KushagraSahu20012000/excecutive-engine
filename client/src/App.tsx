@@ -7,7 +7,39 @@ import { api, jsonBody } from './api';
 import { MOCK_DEADLINES, MOCK_GOALS, MOCK_SETTINGS, MOCK_STATS, MOCK_TASKS, MOCK_USER } from './mockData';
 import type { Completion, Deadline, Goal, Settings, Task, User } from './types';
 
-const todayKey = () => format(new Date(), 'yyyy-MM-dd');
+const IST_TIME_ZONE = 'Asia/Kolkata';
+
+function istParts(date = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: IST_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23'
+  }).formatToParts(date);
+  return Object.fromEntries(parts.map((part) => [part.type, part.value])) as Record<string, string>;
+}
+
+const todayKey = () => {
+  const parts = istParts();
+  return `${parts.year}-${parts.month}-${parts.day}`;
+};
+
+function istDateTimeLocal(date = new Date()) {
+  const parts = istParts(date);
+  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
+}
+
+function istDisplay(value: Date | string, options: Intl.DateTimeFormatOptions) {
+  return new Intl.DateTimeFormat('en-IN', { timeZone: IST_TIME_ZONE, ...options }).format(typeof value === 'string' ? parseISO(value) : value);
+}
+
+function addIstDays(days: number) {
+  return new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+}
+
 const CHART_COLORS = ['#0b46d8', '#e86744', '#a0a8c0'];
 type Tab = 'today' | 'goals' | 'deadlines' | 'stats' | 'settings' | 'help' | 'reset';
 type StatsPayload = { weekly: { label: string; percent: number }[]; deadlineRatio: { name: string; value: number }[]; missedTasks: { title: string; missed: number }[]; deadlineLeadTime: { label: string; count: number }[]; streak: number };
@@ -110,7 +142,7 @@ function hasTwoWeekDrop(weekly: { percent: number }[]) {
   return currentWeek.percent < lastWeek.percent && lastWeek.percent < twoWeeksAgo.percent;
 }
 
-const notificationStamp = () => format(new Date(), 'yyyy-MM-dd');
+const notificationStamp = () => todayKey();
 const notificationKey = (kind: string, id = notificationStamp()) => `executive-engine:${kind}:${id}`;
 
 function notificationsAllowed(settings: Settings) {
@@ -142,9 +174,9 @@ function scheduleDaily(hour: number, minute: number, callback: () => void) {
   let timeoutId = 0;
   const scheduleNext = () => {
     const now = new Date();
-    const next = new Date(now);
-    next.setHours(hour, minute, 0, 0);
-    if (next <= now) next.setDate(next.getDate() + 1);
+    const parts = istParts(now);
+    let next = new Date(`${parts.year}-${parts.month}-${parts.day}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00+05:30`);
+    if (next <= now) next = new Date(next.getTime() + 24 * 60 * 60 * 1000);
     timeoutId = window.setTimeout(() => {
       callback();
       scheduleNext();
@@ -155,11 +187,13 @@ function scheduleDaily(hour: number, minute: number, callback: () => void) {
 }
 
 function dateKeyFromValue(value?: string) {
-  return value ? format(parseISO(value), 'yyyy-MM-dd') : todayKey();
+  if (!value) return todayKey();
+  const parts = istParts(parseISO(value));
+  return `${parts.year}-${parts.month}-${parts.day}`;
 }
 
 function localDateTimeToIso(value: string) {
-  return new Date(value).toISOString();
+  return new Date(`${value}:00+05:30`).toISOString();
 }
 
 function goalProgressData(goal: Goal) {
@@ -462,7 +496,7 @@ function deadlineRemaining(dt: string) {
 function GoalsPage({ demo, demoOpenGoal = false, onOpenMessUp }: { demo: boolean; demoOpenGoal?: boolean; onOpenMessUp: () => void }) {
   const [goals, setGoals] = useState<Goal[]>(demo ? MOCK_GOALS : []);
   const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null);
-  const [form, setForm] = useState({ title: '', description: '', deadlineAt: format(addDays(new Date(), 30), "yyyy-MM-dd'T'HH:mm") });
+  const [form, setForm] = useState({ title: '', description: '', deadlineAt: istDateTimeLocal(addIstDays(30)) });
   const [tick, setTick] = useState(0);
   const [goalDeleteTarget, setGoalDeleteTarget] = useState<Goal | null>(null);
 
@@ -482,8 +516,8 @@ function GoalsPage({ demo, demoOpenGoal = false, onOpenMessUp }: { demo: boolean
   async function addGoal(e: FormEvent) {
     e.preventDefault(); if (!form.title.trim()) return;
     const payload = { ...form, deadlineAt: localDateTimeToIso(form.deadlineAt) };
-    if (demo) { setGoals((p) => [...p, { _id: `g${Date.now()}`, ...payload, actions: [], notes: [], completions: [] }]); setForm({ title: '', description: '', deadlineAt: format(addDays(new Date(), 30), "yyyy-MM-dd'T'HH:mm") }); return; }
-    await api('/api/goals', { method: 'POST', ...jsonBody(payload) }); setForm({ title: '', description: '', deadlineAt: format(addDays(new Date(), 30), "yyyy-MM-dd'T'HH:mm") }); await load();
+    if (demo) { setGoals((p) => [...p, { _id: `g${Date.now()}`, ...payload, actions: [], notes: [], completions: [] }]); setForm({ title: '', description: '', deadlineAt: istDateTimeLocal(addIstDays(30)) }); return; }
+    await api('/api/goals', { method: 'POST', ...jsonBody(payload) }); setForm({ title: '', description: '', deadlineAt: istDateTimeLocal(addIstDays(30)) }); await load();
   }
 
   function requestGoalDelete(goalId: string) {
@@ -747,7 +781,7 @@ function NotePanel({ title, value, notes, onChange, onAdd }: { title: string; va
 
 function DeadlinesPage({ demo }: { demo: boolean }) {
   const [deadlines, setDeadlines] = useState<Deadline[]>(demo ? MOCK_DEADLINES : []);
-  const [form, setForm] = useState({ title: '', description: '', dueAt: format(addDays(new Date(), 7), "yyyy-MM-dd'T'HH:mm") });
+  const [form, setForm] = useState({ title: '', description: '', dueAt: istDateTimeLocal(addIstDays(7)) });
   const [celebratingDeadlineId, setCelebratingDeadlineId] = useState<string | null>(null);
 
   async function load() { const d = await api<{ deadlines: Deadline[] }>('/api/deadlines'); setDeadlines(d.deadlines); }
@@ -756,8 +790,8 @@ function DeadlinesPage({ demo }: { demo: boolean }) {
   async function addDeadline(e: FormEvent) {
     e.preventDefault(); if (!form.title.trim()) return;
     const payload = { ...form, dueAt: localDateTimeToIso(form.dueAt) };
-    if (demo) { setDeadlines((p) => [...p, { _id: `d${Date.now()}`, ...payload, outcome: 'pending' }]); setForm({ title: '', description: '', dueAt: format(addDays(new Date(), 7), "yyyy-MM-dd'T'HH:mm") }); return; }
-    await api('/api/deadlines', { method: 'POST', ...jsonBody(payload) }); setForm({ title: '', description: '', dueAt: format(addDays(new Date(), 7), "yyyy-MM-dd'T'HH:mm") }); await load();
+    if (demo) { setDeadlines((p) => [...p, { _id: `d${Date.now()}`, ...payload, outcome: 'pending' }]); setForm({ title: '', description: '', dueAt: istDateTimeLocal(addIstDays(7)) }); return; }
+    await api('/api/deadlines', { method: 'POST', ...jsonBody(payload) }); setForm({ title: '', description: '', dueAt: istDateTimeLocal(addIstDays(7)) }); await load();
   }
 
   async function togglePass(dl: Deadline) {
@@ -804,10 +838,10 @@ function DeadlinesPage({ demo }: { demo: boolean }) {
         return (
           <article className="card deadline-row deadline-card span-12" key={dl._id}>
             <div><h2>{dl.title}</h2><p className="muted">{dl.description || 'No description'}</p></div>
-            <div className="deadline-date-block" aria-label={format(dueDate, 'PPpp')}>
+            <div className="deadline-date-block" aria-label={istDisplay(dueDate, { dateStyle: 'full', timeStyle: 'short' })}>
               <strong>{remaining.value} <span>{remaining.unit}</span></strong>
               <em>remaining</em>
-              <small>{format(dueDate, 'EEE, MMM d')} · {format(dueDate, 'p')}</small>
+              <small>{istDisplay(dueDate, { weekday: 'short', month: 'short', day: 'numeric' })} · {istDisplay(dueDate, { hour: 'numeric', minute: '2-digit', hour12: true })} IST</small>
             </div>
             <span className={`status ${outcome}`}>{outcome}</span>
             <div className="deadline-actions">
@@ -1123,14 +1157,15 @@ export function App() {
       const data = await api<{ deadlines: Deadline[] }>('/api/deadlines').catch(() => null);
       if (!data) return;
       data.deadlines
-        .filter((deadline) => deadline.outcome === 'pending')
+        .filter((deadline) => {
+          const millisecondsUntilDue = parseISO(deadline.dueAt).getTime() - Date.now();
+          return deadline.outcome === 'pending' && millisecondsUntilDue > 0 && millisecondsUntilDue <= 24 * 60 * 60 * 1000;
+        })
         .forEach((deadline) => {
-          const key = notificationKey('deadline', `${deadline._id}:${notificationStamp()}`);
-          if (notificationWasSent(key)) return;
           void showBrowserNotification(`Deadline: ${deadline.title}`, {
-            body: `Due ${format(parseISO(deadline.dueAt), 'PPp')}. Keep this visible until you pass or fail it.`,
+            body: `Due ${istDisplay(deadline.dueAt, { dateStyle: 'medium', timeStyle: 'short' })} IST. This will keep returning while it is under 24 hours away.`,
             tag: `executive-engine-deadline-${deadline._id}`
-          }).then((sent) => { if (sent) markNotificationSent(key); });
+          });
         });
     }
 
@@ -1159,7 +1194,7 @@ export function App() {
     }
 
     void ensureNotificationPermission().then((allowed) => { if (allowed) void notifyDeadlines(); });
-    const deadlineInterval = window.setInterval(() => void notifyDeadlines(), 60 * 60 * 1000);
+    const deadlineInterval = window.setInterval(() => void notifyDeadlines(), 15 * 60 * 1000);
     const clearNightlyUpdate = scheduleDaily(23, 0, () => void nightlyStatusCheck(false));
     const clearNightlyMissed = scheduleDaily(23, 45, () => void nightlyStatusCheck(true));
 
