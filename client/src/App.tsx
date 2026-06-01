@@ -17,8 +17,22 @@ const DEMO_STEPS = [
     tab: 'today',
     focus: 'today',
     cloud: 'bottom',
-    title: 'This is your Today page',
-    body: 'Your day starts here: weekly checks on top, daily repeating tasks below.'
+    title: 'This is your Tasks page',
+    body: 'This is not a traditional todo list. It is a repeatable task system for the whole week. Your day resets at 12 AM, so mark tasks complete before the day ends. Weekly progress is on top; your task list is below.'
+  },
+  {
+    tab: 'help',
+    focus: 'help',
+    cloud: 'bottom',
+    title: 'Use Help when you are stuck',
+    body: 'Help explains how to choose useful repeated tasks, what deserves a daily slot, and how to keep the system realistic instead of overloaded.'
+  },
+  {
+    tab: 'reset',
+    focus: 'reset',
+    cloud: 'bottom',
+    title: 'When you mess up',
+    body: 'A miss is not the end of the system. Use this page to study what happened, find the repeat pattern, and create a countermeasure for next time.'
   },
   {
     tab: 'today',
@@ -54,13 +68,6 @@ const DEMO_STEPS = [
     cloud: 'bottom',
     title: 'Stats turn behavior into feedback',
     body: 'Use streaks, missed tasks, weekly completion, and deadlines to adjust the system.'
-  },
-  {
-    tab: 'today',
-    focus: 'help',
-    cloud: 'bottom',
-    title: 'When stuck, tap Help',
-    body: 'Help explains how to choose useful daily tasks and what to do when the system fails.'
   },
   {
     tab: 'settings',
