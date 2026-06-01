@@ -385,19 +385,19 @@ function TodayPage({ demo, tasks, settings, setTasks, onChangeSettings, onOpenHe
         </div>
         {!taskLimitReached && (addingTask || tasks.length === 0) ? (
           <>
+            <form className="inline-form task-add-form" onSubmit={addTask}>
+              <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Add a repeating task" autoFocus />
+              <button aria-label="Save task"><Plus size={18} /></button>
+            </form>
             {tasks.length === 0 && (
               <div className="empty-task-help">
                 <p>Not sure what to add?</p>
                 <button className="help-recommend-button" type="button" onClick={onOpenHelp}>
                   <HelpCircle size={17} />
-                  <span><strong>Recommended</strong><small>Open Help</small></span>
+                  <span><strong>Help</strong></span>
                 </button>
               </div>
             )}
-            <form className="inline-form task-add-form" onSubmit={addTask}>
-              <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Add a repeating task" autoFocus />
-              <button aria-label="Save task"><Plus size={18} /></button>
-            </form>
           </>
         ) : !taskLimitReached ? (
           <div className="task-actions-footer">
