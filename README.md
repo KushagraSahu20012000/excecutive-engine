@@ -116,7 +116,7 @@ The production client build is emitted from `client/dist`.
 
 - Recommended production setup: deploy this repo as one Render web service and use MongoDB Atlas for the database.
 - In production, Express serves the built React app from `client/dist`, handles `/api/*`, and hosts `/ws` for realtime stats on the same domain.
-- Build command: `npm ci && npm run build`.
+- Build command: `npm ci --include=dev && npm run build`.
 - Start command: `npm run start`.
 - Health check path: `/api/health`.
 - Required Render environment variables:
