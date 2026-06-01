@@ -182,7 +182,7 @@ function Login({ onAuth, initialMode = 'login' }: { onAuth: (user: User) => void
       <section className="login-panel glass-panel">
         <p className="brand-mark">Executive Engine</p>
         <h1>Get out of your head and onto rails today.</h1>
-        <p className="muted">A quiet command center for daily tasks, long-range goals, deadlines, and the progress you want to keep compounding.</p>
+        <p className="muted">An executive assistant for people who struggle with ADHD or executive function, organization, follow-through, or keeping consistent discipline. Use it for daily tasks, long-range goals, deadlines, and keep compounding the progress.</p>
         <form className="auth-form" onSubmit={submit}>
           {mode === 'signup' && (
             <input
