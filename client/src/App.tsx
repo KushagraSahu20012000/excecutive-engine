@@ -292,12 +292,19 @@ function TodayPage({ demo, tasks, settings, setTasks, onChangeSettings, onOpenHe
     if (taskLimitReached) { setShowTaskLimitWarning(true); return; }
     const nextCount = tasks.length + 1;
     if (demo) { setTasks((p) => [...p, { _id: `t${Date.now()}`, title, position: p.length }]); setTitle(''); setAddingTask(false); if (nextCount >= 7) setShowTaskLimitWarning(true); return; }
-    await api('/api/tasks', { method: 'POST', ...jsonBody({ title }) }); setTitle(''); setAddingTask(false); await load(); if (nextCount >= 7) setShowTaskLimitWarning(true);
+    const optimisticTask = { _id: `pending-${Date.now()}`, title, position: tasks.length };
+    setTasks((previous) => [...previous, optimisticTask]);
+    setTitle(''); setAddingTask(false); if (nextCount >= 7) setShowTaskLimitWarning(true);
+    void api('/api/tasks', { method: 'POST', ...jsonBody({ title }) }).then(load).catch(load);
   }
 
   async function toggleTask(id: string) {
     if (demo) { setDemoChecked((p) => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; }); return; }
-    await api(`/api/tasks/${id}/toggle`, { method: 'POST', ...jsonBody({ date: currentDay }) }); await load();
+    const wasCompleted = completedToday.has(id);
+    const checkWeight = settings.anchorTaskId === id ? 2 : 1;
+    setCompletions((previous) => wasCompleted ? previous.filter((completion) => !(completion.taskId === id && completion.date === currentDay)) : [...previous, { _id: `pending-${Date.now()}`, taskId: id, date: currentDay }]);
+    setSummary((previous) => ({ ...previous, completed: Math.max(0, previous.completed + (wasCompleted ? -checkWeight : checkWeight)) }));
+    void api(`/api/tasks/${id}/toggle`, { method: 'POST', ...jsonBody({ date: currentDay }) }).then(load).catch(load);
   }
 
   async function toggleAnchorTask(taskId: string) {
@@ -452,15 +459,13 @@ function GoalsPage({ demo, demoOpenGoal = false, onOpenMessUp }: { demo: boolean
   }
 
   async function toggleAction(gid: string, aid: string) {
-    if (demo) {
-      setGoals((p) => p.map((g) => {
-        if (g._id !== gid) return g;
-        const date = todayKey();
-        const done = g.completions.some((c) => c.actionId === aid && c.date === date);
-        return { ...g, completions: done ? g.completions.filter((c) => !(c.actionId === aid && c.date === date)) : [...g.completions, { _id: `c${Date.now()}`, actionId: aid, date }] };
-      })); return;
-    }
-    await api(`/api/goals/${gid}/actions/${aid}/toggle`, { method: 'POST', ...jsonBody({ date: todayKey() }) }); await load();
+    setGoals((p) => p.map((g) => {
+      if (g._id !== gid) return g;
+      const date = todayKey();
+      const done = g.completions.some((c) => c.actionId === aid && c.date === date);
+      return { ...g, completions: done ? g.completions.filter((c) => !(c.actionId === aid && c.date === date)) : [...g.completions, { _id: `c${Date.now()}`, actionId: aid, date }] };
+    }));
+    if (!demo) void api(`/api/goals/${gid}/actions/${aid}/toggle`, { method: 'POST', ...jsonBody({ date: todayKey() }) }).then(load).catch(load);
   }
 
   async function addNote(gid: string, kind: 'works' | 'doesnt', body: string) {
@@ -705,8 +710,8 @@ function DeadlinesPage({ demo }: { demo: boolean }) {
       window.setTimeout(() => setCelebratingDeadlineId((current) => current === dl._id ? null : current), 900);
     }
 
-    if (demo) { setDeadlines((p) => p.map((d) => d._id === dl._id ? { ...d, outcome: nextOutcome } : d)); return; }
-    await api(`/api/deadlines/${dl._id}`, { method: 'PATCH', ...jsonBody({ ...dl, outcome: nextOutcome }) }); await load();
+    setDeadlines((p) => p.map((d) => d._id === dl._id ? { ...d, outcome: nextOutcome } : d));
+    if (!demo) void api(`/api/deadlines/${dl._id}`, { method: 'PATCH', ...jsonBody({ ...dl, outcome: nextOutcome }) }).then(load).catch(load);
   }
 
   async function removeDeadline(deadlineId: string) {
@@ -1019,8 +1024,11 @@ export function App() {
       setSettings(next);
       return;
     }
-    const data = await api<{ settings: Settings }>('/api/settings', { method: 'PATCH', ...jsonBody(next) });
-    setSettings(data.settings);
+    const previous = settings;
+    setSettings(next);
+    void api<{ settings: Settings }>('/api/settings', { method: 'PATCH', ...jsonBody(next) })
+      .then((data) => setSettings(data.settings))
+      .catch(() => setSettings(previous));
   }
 
   useEffect(() => {
