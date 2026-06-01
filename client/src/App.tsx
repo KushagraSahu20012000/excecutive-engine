@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { BarChart3, CalendarClock, Check, ChevronDown, Flame, Goal as GoalIcon, HelpCircle, Home, LogOut, Plus, Settings2, Star, Trash2 } from 'lucide-react';
 import { Bar, BarChart, Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { api, jsonBody } from './api';
-import { MOCK_DEADLINES, MOCK_GOALS, MOCK_SETTINGS, MOCK_STATS, MOCK_TASKS } from './mockData';
+import { MOCK_DEADLINES, MOCK_GOALS, MOCK_SETTINGS, MOCK_STATS, MOCK_TASKS, MOCK_USER } from './mockData';
 import type { Completion, Deadline, Goal, Settings, Task, User } from './types';
 
 const todayKey = () => format(new Date(), 'yyyy-MM-dd');
@@ -12,57 +12,73 @@ const CHART_COLORS = ['#0b46d8', '#e86744', '#a0a8c0'];
 type Tab = 'today' | 'goals' | 'deadlines' | 'stats' | 'settings' | 'help' | 'reset';
 type StatsPayload = { weekly: { label: string; percent: number }[]; deadlineRatio: { name: string; value: number }[]; missedTasks: { title: string; missed: number }[]; deadlineLeadTime: { label: string; count: number }[]; streak: number };
 
-const TOUR_STEPS = [
+const DEMO_STEPS = [
   {
-    eyebrow: 'Step 1 of 7',
-    title: 'Start with Today',
-    body: 'Today is the daily operating page. It keeps the day small: a few repeating actions, a weekly completion score, and one place to mark progress without rebuilding your plan every morning.',
+    tab: 'today',
     focus: 'today',
-    details: ['Tap the checkbox to mark a task done for the current day.', 'Use Add to create a repeating daily task.', 'The progress line shows how many weekly checks you have earned.']
+    cloud: 'bottom',
+    title: 'This is your Today page',
+    body: 'Your day starts here: weekly checks on top, daily repeating tasks below.'
   },
   {
-    eyebrow: 'Step 2 of 7',
-    title: 'Pick one anchor task',
-    body: 'The star marks your non-negotiable task. If the day gets chaotic, this is the one action you still protect because it keeps the system alive.',
+    tab: 'today',
+    focus: 'checkbox',
+    cloud: 'bottom',
+    title: 'Tap the box when a task is done',
+    body: 'Each check counts for today only, while history feeds your stats.'
+  },
+  {
+    tab: 'today',
     focus: 'anchor',
-    details: ['Tap the star beside a task to make it your anchor.', 'Tap it again to remove the anchor.', 'Your anchor helps you decide what matters when energy is low.']
+    cloud: 'bottom',
+    title: 'Use the star for your anchor task',
+    body: 'The anchor is your non-negotiable. If the day collapses, protect this one.'
   },
   {
-    eyebrow: 'Step 3 of 7',
-    title: 'Build goals from daily actions',
-    body: 'Goals are long-range outcomes broken into daily action plans. Each goal opens into actions, notes, and a small progress history so you can see what is actually moving.',
+    tab: 'goals',
     focus: 'goals',
-    details: ['Tap a goal card to open it.', 'Add daily actions that make the goal real.', 'Use Works and Doesnt notes to record what helps or blocks you.']
+    cloud: 'bottom',
+    title: 'Goals contain the plan',
+    body: 'Open a goal to add daily actions, track completion, and save Works / Doesnt notes.'
   },
   {
-    eyebrow: 'Step 4 of 7',
-    title: 'Track deadlines with pressure',
-    body: 'Deadlines keep time-sensitive responsibilities visible. Each deadline shows how much time remains and lets you mark the outcome once it is handled.',
+    tab: 'deadlines',
     focus: 'deadlines',
-    details: ['Add a title and due date for each deadline.', 'Mark Pass when you complete it before the deadline.', 'Mark Fail when it is missed so your stats stay honest.']
+    cloud: 'bottom',
+    title: 'Deadlines show time pressure',
+    body: 'Mark pass or fail so the app can show how you perform under pressure.'
   },
   {
-    eyebrow: 'Step 5 of 7',
-    title: 'Read the stats as feedback',
-    body: 'Stats turn your behavior into data: streaks, weekly completion, missed tasks, deadline outcomes, and how early you usually pass deadlines.',
+    tab: 'stats',
     focus: 'stats',
-    details: ['Weekly completion shows whether your system is sustainable.', 'Most missed tasks show what needs to be smaller or clearer.', 'Pass timing shows whether you finish early or at the last minute.']
+    cloud: 'bottom',
+    title: 'Stats turn behavior into feedback',
+    body: 'Use streaks, missed tasks, weekly completion, and deadlines to adjust the system.'
   },
   {
-    eyebrow: 'Step 6 of 7',
-    title: 'Use settings and help deliberately',
-    body: 'Settings shape your week, and Help explains how to choose good daily tasks. These controls keep the system realistic instead of overloaded.',
+    tab: 'today',
+    focus: 'help',
+    cloud: 'bottom',
+    title: 'When stuck, tap Help',
+    body: 'Help explains how to choose useful daily tasks and what to do when the system fails.'
+  },
+  {
+    tab: 'settings',
     focus: 'settings',
-    details: ['Use Settings to include or exclude weekend days.', 'Delete tasks that no longer belong in your daily system.', 'Open Help when you need to decide what deserves a daily slot.']
+    cloud: 'bottom',
+    title: 'Settings shape the system',
+    body: 'Choose whether weekends count and delete tasks that no longer belong.'
   },
   {
-    eyebrow: 'Step 7 of 7',
-    title: 'Register when you are ready',
-    body: 'Your account saves tasks, goals, deadlines, notes, settings, completions, and stats. After registration, this becomes your personal execution system instead of a tour.',
-    focus: 'register',
-    details: ['Create an account with email and password.', 'Your JWT session is stored in an HTTP-only cookie.', 'Your data is saved to MongoDB and restored across devices.']
+    tab: 'today',
+    focus: 'tabs',
+    cloud: 'bottom',
+    title: 'Use the bottom tabs to move around',
+    body: 'Today, Goals, Deadlines, and Stats are the main loop. Skip when you are ready to register.'
   }
 ] as const;
+
+type DemoStep = (typeof DEMO_STEPS)[number];
 
 function hasTwoWeekDrop(weekly: { percent: number }[]) {
   if (weekly.length < 3) return false;
@@ -94,60 +110,19 @@ function goalProgressData(goal: Goal) {
   return { series, current };
 }
 
-function AppIntroTour({ onComplete }: { onComplete: () => void }) {
-  const [stepIndex, setStepIndex] = useState(0);
-  const step = TOUR_STEPS[stepIndex];
-  const isFinalStep = stepIndex === TOUR_STEPS.length - 1;
-
-  function nextStep() {
-    if (isFinalStep) {
-      onComplete();
-      return;
-    }
-    setStepIndex((current) => current + 1);
-  }
+function DemoCloud({ step, stepIndex, onNext, onSkip }: { step: DemoStep; stepIndex: number; onNext: () => void; onSkip: () => void }) {
+  const isFinalStep = stepIndex === DEMO_STEPS.length - 1;
 
   return (
-    <main className="tour-screen">
-      <section className="tour-shell">
-        <div className="tour-copy">
-          <p className="brand-mark">Executive Engine</p>
-          <p className="eyebrow">{step.eyebrow}</p>
-          <h1>{step.title}</h1>
-          <p>{step.body}</p>
-          <div className="tour-detail-list">
-            {step.details.map((detail) => <button key={detail} type="button" onClick={nextStep}>{detail}</button>)}
-          </div>
-          <div className="tour-actions">
-            <button type="button" className="primary-action" onClick={nextStep}>{isFinalStep ? 'Register now' : 'Next step'}</button>
-            {stepIndex > 0 && <button type="button" className="secondary-action" onClick={() => setStepIndex((current) => current - 1)}>Back</button>}
-          </div>
-        </div>
-        <div className="tour-preview" aria-label="Executive Engine app tour preview">
-          <div className="tour-phone">
-            <div className="tour-topbar"><span>Executive Engine</span><strong>Preview</strong></div>
-            <div className={`tour-card ${step.focus === 'today' ? 'is-highlighted' : ''}`}>
-              <span>Today</span>
-              <strong>Possible victory</strong>
-              <div className="tour-progress"><i /></div>
-            </div>
-            <div className="tour-task-row"><Check size={15} /><span>Morning deep work block</span><Star className={step.focus === 'anchor' ? 'is-highlighted-icon' : ''} size={17} /></div>
-            <div className="tour-task-row"><span className="tour-empty-check" /><span>Review commitments</span><Star size={17} /></div>
-            <div className={`tour-tile-grid ${step.focus === 'goals' ? 'is-highlighted' : ''}`}>
-              <div>Launch project</div>
-              <div>Sleep schedule</div>
-            </div>
-            <div className={`tour-deadline-line ${step.focus === 'deadlines' ? 'is-highlighted' : ''}`}><CalendarClock size={16} /><span>Tax return</span><b>3d left</b></div>
-            <div className={`tour-chart ${step.focus === 'stats' ? 'is-highlighted' : ''}`}><i /><i /><i /><i /></div>
-            <div className={`tour-mini-actions ${step.focus === 'settings' ? 'is-highlighted' : ''}`}><span>Help</span><span>Settings</span></div>
-            <div className={`tour-register-card ${step.focus === 'register' ? 'is-highlighted' : ''}`}>Create account</div>
-          </div>
-        </div>
-        <div className="tour-dots" aria-label="Tour progress">
-          {TOUR_STEPS.map((tourStep, index) => <button key={tourStep.title} type="button" className={index === stepIndex ? 'active' : ''} onClick={() => setStepIndex(index)} aria-label={`Open ${tourStep.title}`} />)}
-        </div>
-      </section>
-    </main>
+    <div className="demo-tour-layer" aria-live="polite">
+      <motion.section key={step.title} className={`demo-cloud demo-cloud-${step.cloud}`} initial={{ opacity: 0, y: 8, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.18 }}>
+        <p className="eyebrow">Demo {stepIndex + 1} / {DEMO_STEPS.length}</p>
+        <h2>{step.title}</h2>
+        <p>{step.body}</p>
+        <button type="button" onClick={onNext}>{isFinalStep ? 'Create account' : 'Next'}</button>
+      </motion.section>
+      <button type="button" className="demo-skip-button" onClick={onSkip}>Skip demo</button>
+    </div>
   );
 }
 
@@ -219,7 +194,7 @@ function Login({ onAuth, initialMode = 'login' }: { onAuth: (user: User) => void
 }
 
 function DemoBanner() {
-  return <div className="demo-banner">Preview mode — sample data only. Start MongoDB + the API server to persist data.</div>;
+  return <div className="demo-banner">Guided demo — sample data only. Create an account when you are ready to save your own system.</div>;
 }
 
 function PencilTick({ checked, onClick }: { checked: boolean; onClick: () => void }) {
@@ -1000,6 +975,7 @@ export function App() {
   const [demo, setDemo] = useState(false);
   const [autoResetOpened, setAutoResetOpened] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
+  const [demoStepIndex, setDemoStepIndex] = useState(0);
 
   function openReset(returnTab: Exclude<Tab, 'reset'>) {
     setResetReturnTab(returnTab);
@@ -1007,7 +983,7 @@ export function App() {
   }
 
   async function saveSettings(next: Settings) {
-    if (demo) {
+    if (demo || !user) {
       setSettings(next);
       return;
     }
@@ -1037,6 +1013,26 @@ export function App() {
       .catch(() => undefined);
   }, [autoResetOpened, demo, loading, user]);
 
+  const isDemoTour = !user && !showAuth;
+  const activeDemoStep = DEMO_STEPS[demoStepIndex];
+  const effectiveDemo = demo || isDemoTour;
+  const displayUser = user || MOCK_USER;
+
+  useEffect(() => {
+    if (!isDemoTour) return;
+    setTab(activeDemoStep.tab);
+  }, [activeDemoStep.tab, isDemoTour]);
+
+  function nextDemoStep() {
+    if (demoStepIndex >= DEMO_STEPS.length - 1) {
+      setShowAuth(true);
+      return;
+    }
+    const nextIndex = demoStepIndex + 1;
+    setDemoStepIndex(nextIndex);
+    setTab(DEMO_STEPS[nextIndex].tab);
+  }
+
   async function removeTaskFromSettings(taskId: string) {
     setTasks((previous) => previous.filter((task) => task._id !== taskId));
     if (settings.anchorTaskId === taskId) setSettings((current) => ({ ...current, anchorTaskId: null }));
@@ -1044,30 +1040,30 @@ export function App() {
   }
 
   const content = useMemo(() => {
-    if (tab === 'today') return <TodayPage demo={demo} tasks={tasks} settings={settings} setTasks={setTasks} onChangeSettings={saveSettings} onOpenHelp={() => setTab('help')} />;
-    if (tab === 'goals') return <GoalsPage demo={demo} onOpenMessUp={() => openReset('goals')} />;
-    if (tab === 'deadlines') return <DeadlinesPage demo={demo} />;
-    if (tab === 'stats') return <StatsPage demo={demo} />;
+    if (tab === 'today') return <TodayPage demo={effectiveDemo} tasks={tasks} settings={settings} setTasks={setTasks} onChangeSettings={saveSettings} onOpenHelp={() => setTab('help')} />;
+    if (tab === 'goals') return <GoalsPage demo={effectiveDemo} onOpenMessUp={() => openReset('goals')} />;
+    if (tab === 'deadlines') return <DeadlinesPage demo={effectiveDemo} />;
+    if (tab === 'stats') return <StatsPage demo={effectiveDemo} />;
     if (tab === 'help') return <HelpPage />;
     if (tab === 'reset') return <MessUpPage onBack={() => setTab(resetReturnTab)} />;
     return <SettingsPage settings={settings} tasks={tasks} onChange={(next) => void saveSettings(next)} onRemoveTask={(taskId) => void removeTaskFromSettings(taskId)} />;
-  }, [settings, tasks, tab, demo, resetReturnTab]);
+  }, [settings, tasks, tab, effectiveDemo, resetReturnTab]);
 
   async function logout() {
-    if (!demo) await api('/api/auth/logout', { method: 'POST' });
+    if (user && !demo) await api('/api/auth/logout', { method: 'POST' });
     setAutoResetOpened(false);
     setShowAuth(false);
     setUser(null); setDemo(false);
   }
 
   if (loading) return <div className="boot-screen">Executive Engine</div>;
-  if (!user) return showAuth ? <Login onAuth={setUser} initialMode="signup" /> : <AppIntroTour onComplete={() => setShowAuth(true)} />;
+  if (!user && showAuth) return <Login onAuth={setUser} initialMode="signup" />;
 
   return (
-    <div className="app-shell">
-      {demo && <DemoBanner />}
+    <div className={`app-shell ${isDemoTour ? `is-demo-tour demo-focus-${activeDemoStep.focus}` : ''}`.trim()}>
+      {(demo || isDemoTour) && <DemoBanner />}
       <header className="topbar">
-        <div><p className="eyebrow">Executive Engine</p><strong>{user.displayName}</strong></div>
+        <div><p className="eyebrow">Executive Engine</p><strong>{displayUser.displayName}</strong></div>
         <div className="topbar-actions">
           <button className={`icon-button ${tab === 'help' ? 'is-active' : ''}`} onClick={() => setTab('help')} aria-label="Help"><HelpCircle size={18} /></button>
           <button className={`icon-button ${tab === 'settings' ? 'is-active' : ''}`} onClick={() => setTab('settings')} aria-label="Settings"><Settings2 size={18} /></button>
@@ -1081,6 +1077,7 @@ export function App() {
         <TabButton active={tab === 'deadlines'} onClick={() => setTab('deadlines')} icon={<CalendarClock size={19} />} label="Deadlines" />
         <TabButton active={tab === 'stats'} onClick={() => setTab('stats')} icon={<BarChart3 size={19} />} label="Stats" />
       </nav>
+      {isDemoTour && <DemoCloud step={activeDemoStep} stepIndex={demoStepIndex} onNext={nextDemoStep} onSkip={() => setShowAuth(true)} />}
     </div>
   );
 }

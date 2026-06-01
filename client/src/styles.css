@@ -442,6 +442,18 @@ button:hover, .primary-action:hover { background: oklch(0.24 0.02 260); }
 .tabbar span { font-size: 10px; }
 
 .demo-banner { background: transparent; color: oklch(0.43 0.07 65); border-bottom: 1px solid oklch(0.85 0.04 80); padding: 0 0 12px; font: 750 11px/1.35 "IBM Plex Mono", ui-monospace, monospace; text-align: left; margin: 0 0 18px; }
+.is-demo-tour .topbar, .is-demo-tour .page-grid, .is-demo-tour .tabbar, .is-demo-tour .demo-banner { transition: filter 160ms ease, opacity 160ms ease; }
+.is-demo-tour .hero-card, .is-demo-tour .task-item:first-child .pencil-box, .is-demo-tour .task-item:first-child .anchor-button, .is-demo-tour .goal-title-row:first-child, .is-demo-tour .deadline-card:first-of-type, .is-demo-tour .chart-card:first-of-type, .is-demo-tour .topbar-actions .icon-button:nth-child(1), .is-demo-tour .topbar-actions .icon-button:nth-child(2), .is-demo-tour .tabbar { position: relative; z-index: 25; }
+.demo-focus-today .hero-card::after, .demo-focus-goals .goal-title-row:first-child::after, .demo-focus-deadlines .deadline-card:first-of-type::after, .demo-focus-stats .chart-card:first-of-type::after, .demo-focus-tabs .tabbar::after { content: ""; position: absolute; inset: -7px; border: 2px solid var(--accent); border-radius: 12px; pointer-events: none; box-shadow: 0 0 0 5px oklch(0.92 0.05 254 / 0.46); }
+.demo-focus-checkbox .task-item:first-child .pencil-box, .demo-focus-anchor .task-item:first-child .anchor-button, .demo-focus-help .topbar-actions .icon-button:nth-child(1), .demo-focus-settings .topbar-actions .icon-button:nth-child(2) { outline: 2px solid var(--accent); box-shadow: 0 0 0 5px oklch(0.92 0.05 254 / 0.5); }
+.demo-tour-layer { position: fixed; inset: 0; z-index: 60; pointer-events: none; }
+.demo-cloud { position: fixed; left: 50%; bottom: 72px; transform: translateX(-50%); width: min(360px, calc(100% - 28px)); max-height: min(235px, calc(100vh - 116px)); overflow: auto; border: 1px solid oklch(0.84 0.017 82); border-radius: 18px; padding: 13px 14px 12px; background: url('/paper-texture.png'), oklch(0.996 0.004 88 / 0.98); background-size: 320px 320px, auto; box-shadow: 0 12px 28px oklch(0.2 0.02 260 / 0.16); pointer-events: auto; }
+.demo-cloud::after { content: none; }
+.demo-cloud h2 { margin: 0 0 5px; font: 700 20px/1.08 Literata, ui-serif, Georgia, serif; }
+.demo-cloud p:not(.eyebrow) { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.38; }
+.demo-cloud button { width: 100%; margin-top: 10px; padding-block: 8px; }
+.demo-skip-button { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 61; width: min(300px, calc(100% - 36px)); border-color: var(--faint); background: oklch(0.996 0.004 88 / 0.96); color: var(--ink); pointer-events: auto; box-shadow: 0 8px 18px oklch(0.2 0.02 260 / 0.08); }
+.demo-skip-button:hover { border-color: var(--ink); background: var(--sheet); color: var(--ink); }
 
 @media (max-width: 760px) {
   .tour-shell { grid-template-columns: 1fr; gap: 28px; }
@@ -450,7 +462,7 @@ button:hover, .primary-action:hover { background: oklch(0.24 0.02 260); }
   .tour-actions { grid-template-columns: 1fr; }
   .tour-phone { min-height: auto; }
   .span-8, .span-4 { grid-column: span 12; }
-  .app-shell { padding: 0 22px 102px; }
+  .app-shell { width: 100vw; padding: 0 22px 102px; border-left: 0; border-right: 0; }
   .topbar { margin-inline: -22px; margin-bottom: 38px; padding: 20px 22px 16px; }
   .card { padding: 24px 0 28px 6px; }
   .card + .card { margin-top: 8px; }
@@ -478,6 +490,9 @@ button:hover, .primary-action:hover { background: oklch(0.24 0.02 260); }
     .task-item .icon-button { width: 36px; height: 36px; }
   .settings-task-item { grid-template-columns: minmax(0, 1fr) 34px; column-gap: 4px; padding: 8px 4px 8px 10px; }
   .settings-task-item .icon-button { width: 34px; height: 34px; justify-self: end; }
+  .tabbar { left: 0; bottom: 0; transform: none; width: 100vw; border-left: 0; border-right: 0; border-bottom: 0; border-radius: 0; }
+  .demo-cloud { left: 0; right: 0; bottom: 48px; transform: none; width: 100vw; max-height: min(220px, calc(100vh - 90px)); border-left: 0; border-right: 0; border-radius: 14px 14px 0 0; }
+  .demo-skip-button { left: 0; bottom: 0; transform: none; width: 100vw; border-left: 0; border-right: 0; border-bottom: 0; border-radius: 0; }
 }
 
 @keyframes float-in {
