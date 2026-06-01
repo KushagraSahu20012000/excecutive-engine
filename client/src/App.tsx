@@ -181,7 +181,7 @@ function Login({ onAuth, initialMode = 'login' }: { onAuth: (user: User) => void
     <main className="login-screen">
       <section className="login-panel glass-panel">
         <p className="brand-mark">Executive Engine</p>
-        <h1>Get today out of your head and onto rails.</h1>
+        <h1>Get out of your head and onto rails today.</h1>
         <p className="muted">A quiet command center for daily tasks, long-range goals, deadlines, and the progress you want to keep compounding.</p>
         <form className="auth-form" onSubmit={submit}>
           {mode === 'signup' && (
