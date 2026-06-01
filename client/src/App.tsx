@@ -52,29 +52,29 @@ const DEMO_STEPS = [
     tab: 'goals',
     focus: 'goals',
     cloud: 'bottom',
-    title: 'Goals contain the plan',
-    body: 'Open a goal to add daily actions, track completion, and save Works / Doesnt notes.'
+    title: 'Create a long term goal',
+    body: 'Use Goals for outcomes that take weeks or months. Create the goal, add a deadline, and keep the outcome visible enough that it does not disappear into daily noise.'
+  },
+  {
+    tab: 'goals',
+    focus: 'goalDetail',
+    cloud: 'bottom',
+    title: 'Add daily actions and notes',
+    body: 'Break the goal into daily actions, mark them complete at the end of the day, and note what worked and what did not. This turns the goal into a system you can improve.'
   },
   {
     tab: 'deadlines',
     focus: 'deadlines',
     cloud: 'bottom',
-    title: 'Deadlines show time pressure',
-    body: 'Mark pass or fail so the app can show how you perform under pressure.'
+    title: 'Deadlines track one time tasks',
+    body: 'Deadlines help you keep track of time sensitive one time tasks. Mark pass or fail so you know whether you handled the pressure before time ran out.'
   },
   {
     tab: 'stats',
     focus: 'stats',
     cloud: 'bottom',
-    title: 'Stats turn behavior into feedback',
-    body: 'Use streaks, missed tasks, weekly completion, and deadlines to adjust the system.'
-  },
-  {
-    tab: 'settings',
-    focus: 'settings',
-    cloud: 'bottom',
-    title: 'Settings shape the system',
-    body: 'Choose whether weekends count and delete tasks that no longer belong.'
+    title: 'Track progress and system quality',
+    body: 'Use streaks, weekly completion, and deadlines to track progress and the quality of the system. Monitor most missed tasks, then remove or modify the most missed ones to adjust the system.'
   },
   {
     tab: 'today',
@@ -377,7 +377,7 @@ function deadlineRemaining(dt: string) {
   return { value: Math.ceil(seconds / 86400), unit: 'days' };
 }
 
-function GoalsPage({ demo, onOpenMessUp }: { demo: boolean; onOpenMessUp: () => void }) {
+function GoalsPage({ demo, demoOpenGoal = false, onOpenMessUp }: { demo: boolean; demoOpenGoal?: boolean; onOpenMessUp: () => void }) {
   const [goals, setGoals] = useState<Goal[]>(demo ? MOCK_GOALS : []);
   const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null);
   const [form, setForm] = useState({ title: '', description: '', deadlineAt: format(addDays(new Date(), 30), "yyyy-MM-dd'T'HH:mm") });
@@ -391,6 +391,11 @@ function GoalsPage({ demo, onOpenMessUp }: { demo: boolean; onOpenMessUp: () => 
     const iv = window.setInterval(() => setTick((v) => v + 1), 1000);
     return () => window.clearInterval(iv);
   }, [demo]);
+
+  useEffect(() => {
+    if (demoOpenGoal && goals[0]) setSelectedGoalId(goals[0]._id);
+    if (!demoOpenGoal && selectedGoalId && demo) setSelectedGoalId(null);
+  }, [demo, demoOpenGoal, goals, selectedGoalId]);
 
   async function addGoal(e: FormEvent) {
     e.preventDefault(); if (!form.title.trim()) return;
@@ -1048,7 +1053,7 @@ export function App() {
 
   const content = useMemo(() => {
     if (tab === 'today') return <TodayPage demo={effectiveDemo} tasks={tasks} settings={settings} setTasks={setTasks} onChangeSettings={saveSettings} onOpenHelp={() => setTab('help')} />;
-    if (tab === 'goals') return <GoalsPage demo={effectiveDemo} onOpenMessUp={() => openReset('goals')} />;
+    if (tab === 'goals') return <GoalsPage demo={effectiveDemo} demoOpenGoal={isDemoTour && activeDemoStep.focus === 'goalDetail'} onOpenMessUp={() => openReset('goals')} />;
     if (tab === 'deadlines') return <DeadlinesPage demo={effectiveDemo} />;
     if (tab === 'stats') return <StatsPage demo={effectiveDemo} />;
     if (tab === 'help') return <HelpPage />;
