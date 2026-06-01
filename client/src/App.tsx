@@ -921,23 +921,23 @@ function HelpPage() {
       <article className="card help-card span-12">
         <p className="eyebrow">Help</p>
         <h1>How to decide daily tasks</h1>
-        <p className="help-purpose">This is not a todo app. It is an executive assistant for people who struggle with executive function, organization, follow-through, or keeping discipline consistent.</p>
-        <p className="help-lede">You are not trying to capture every possible responsibility. You are choosing the few daily actions that protect your life and make the day count, even when the rest of it gets messy.</p>
+        <p className="help-purpose">This is not a normal todo app. It is a repeated task system.</p>
+        <p className="help-lede">Do not list every responsibility. Choose the few daily actions that protect your life and move it forward.</p>
       </article>
       <article className="card help-card span-12">
-        <p className="eyebrow">Priority filter</p>
-        <h2>What deserves to show up?</h2>
-        <p>Give space to tasks that either protect your baseline or create compounding change. When everything feels important, ask which action would change the most if you repeated it every day.</p>
+        <p className="eyebrow">Choose tasks</p>
+        <h2>What belongs here?</h2>
+        <p>Pick tasks that protect your baseline or create compounding change. If everything feels important, ask: what would change my life if I repeated it every day?</p>
         <ol className="help-priority-list">
-          <li><span><strong>Stability:</strong> the basics that stop life from sliding: food, sleep, hygiene, movement, cleaning, medication, money.</span></li>
-          <li><span><strong>Future change:</strong> the actions that compound: study, work, skill-building, fitness, health, relationships.</span></li>
-          <li><span><strong>Known weakness:</strong> the recurring gap you keep avoiding, forgetting, or letting collapse.</span></li>
-          <li><span><strong>Minimum proof:</strong> the smallest honest version that still counts and keeps the system alive.</span></li>
+          <li><span><strong>Stability:</strong> food, sleep, hygiene, movement, cleaning, medication, money.</span></li>
+          <li><span><strong>Growth:</strong> study, work, skills, fitness, health, relationships.</span></li>
+          <li><span><strong>Weak spot:</strong> the thing you keep avoiding or forgetting.</span></li>
+          <li><span><strong>Minimum proof:</strong> the smallest version that still counts.</span></li>
         </ol>
       </article>
       <article className="card help-card span-12">
-        <p className="eyebrow">Step 1</p>
-        <h2>Use the formula</h2>
+        <p className="eyebrow">Formula</p>
+        <h2>Use this filter</h2>
         <div className="help-formula" aria-label="Daily task formula">
           <span>What you need to do every day</span>
           <b>+</b>
@@ -947,55 +947,45 @@ function HelpPage() {
           <b>+</b>
           <span>What you should already be doing</span>
         </div>
-        <p className="help-note">Your daily list should come from the overlap of these four. These are the actions that keep your life functional while slowly moving it forward.</p>
+        <p className="help-note">Your task list should come from the overlap. These are the actions that keep life stable and move it forward.</p>
       </article>
       <article className="card help-card span-12">
-        <p className="eyebrow">Step 2</p>
-        <h2>Ask from the whole life</h2>
-        <div className="help-prompt-grid">
-          <div><strong>Body</strong><span>What am I not doing that would make me healthier, stronger, more attractive, or more energetic if I did it daily?</span></div>
-          <div><strong>Mind</strong><span>What am I not doing that would make me smarter, wiser, calmer, or more intellectually serious?</span></div>
-          <div><strong>Success</strong><span>What am I not doing that would make me more skilled, more valuable, more successful, or more financially stable?</span></div>
-          <div><strong>Life</strong><span>What would make my home, relationships, mood, and basic functioning better if it happened every day?</span></div>
-        </div>
-      </article>
-      <article className="card help-card span-12">
-        <p className="eyebrow">Step 3</p>
-        <h2>Turn answers into daily tasks</h2>
+        <p className="eyebrow">Rules</p>
+        <h2>Make tasks easy to repeat</h2>
         <div className="help-principle-grid">
-          <div><strong>Atomic minimum</strong><span>Make it small enough to complete on a bad day. It should be the minimum proof that the habit stayed alive.</span></div>
-          <div><strong>Fungible</strong><span>Let the task name stand for a useful category. The exact action can change as long as it serves the same purpose.</span></div>
-          <div><strong>Flexible</strong><span>Avoid fragile schedules like 7 AM, 9 AM, 12 PM. Let the must-do list move with the day.</span></div>
-          <div><strong>Checklist-first</strong><span>Think: if these few things happen, today was still a win.</span></div>
+          <div><strong>Small</strong><span>Make it possible on a bad day.</span></div>
+          <div><strong>Flexible</strong><span>Avoid fragile times like 7 AM or 9 PM.</span></div>
+          <div><strong>Category-based</strong><span>A task can stand for a useful category, like cleaning or movement.</span></div>
+          <div><strong>Checklist-first</strong><span>If these few things happen, today still counts.</span></div>
         </div>
-        <p className="help-note">Aim for 5 to 8 must-do items. They should matter enough to change your life, but be simple enough that your future self can actually do them.</p>
+        <p className="help-note">Aim for 5 to 8 must-do items. They should matter, but they must be doable.</p>
       </article>
       <article className="card help-card span-12">
         <p className="eyebrow">Anchor task</p>
         <h2>Pick one non-negotiable</h2>
-        <p>An anchor task is the one most important daily task that keeps you grounded in routine and consistent life. If the day falls apart, this is the task you still protect.</p>
-        <p className="help-note">Choose the task that stabilizes everything else: the action that gives structure, restores direction, or proves you did not abandon the system today.</p>
+        <p>Your anchor is the one task you protect when the day falls apart.</p>
+        <p className="help-note">Choose the task that gives structure, restores direction, or proves you did not abandon the system.</p>
       </article>
       <article className="card help-card span-12">
         <p className="eyebrow">Examples</p>
         <h2>Good tasks can look small</h2>
         <div className="help-example-grid">
-          <div><strong>Cleaning</strong><span>Do one thing that makes your space cleaner, more hygienic, or easier to live in: fold clothes, take out trash, wash clothes, clear the desk.</span></div>
-          <div><strong>Call a person</strong><span>Rotate through family, friends, cousins, or old connections. This builds relationships, confidence, and social health over time.</span></div>
-          <div><strong>Meditate</strong><span>Keep the daily practice alive. On a rough day, shorten the session instead of breaking the chain.</span></div>
-          <div><strong>NoPorn</strong><span>A daily boundary that protects attention, self-control, and the kind of person you are trying to become.</span></div>
-          <div><strong>Meals</strong><span>Use one task like 2 meals, or split it into breakfast, lunch, and dinner if that makes eating reliably easier.</span></div>
+          <div><strong>Cleaning</strong><span>Do one thing that makes your space easier to live in.</span></div>
+          <div><strong>Call a person</strong><span>Rotate through family, friends, or old connections.</span></div>
+          <div><strong>Meditate</strong><span>Shorten the session on a rough day. Do not break the chain.</span></div>
+          <div><strong>NoPorn</strong><span>Keep a daily boundary that protects attention and self-control.</span></div>
+          <div><strong>Meals</strong><span>Track meals in the way that makes eating reliably easier.</span></div>
         </div>
       </article>
       <article className="card help-card span-12">
         <p className="eyebrow">When it fails</p>
-        <h2>Modify the system, not your self-worth</h2>
-        <p>If a task becomes the most missed task over weeks, treat that as data. The task is showing you where the system is too vague, too large, too rigid, or not honest enough.</p>
+        <h2>Modify the system</h2>
+        <p>If a task is missed often, treat it as data. The task may be too big, too vague, too rigid, or not honest enough.</p>
         <ul className="help-list compact-help-list">
-          <li><strong>Too big:</strong> reduce the minimum version until it can survive a bad day.</li>
+          <li><strong>Too big:</strong> make the minimum version smaller.</li>
           <li><strong>Too vague:</strong> rename it so you know what counts as done.</li>
-          <li><strong>Too rigid:</strong> make it movable instead of attaching it to one fragile time slot.</li>
-          <li><strong>Too fake:</strong> replace it with the real behavior that would actually improve your life.</li>
+          <li><strong>Too rigid:</strong> make it movable.</li>
+          <li><strong>Too fake:</strong> replace it with the real behavior you need.</li>
         </ul>
       </article>
     </motion.section>
