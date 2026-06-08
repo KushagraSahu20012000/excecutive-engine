@@ -15,13 +15,14 @@ import taskRoutes from './routes/tasks.js';
 
 export function createApp() {
   const app = express();
+  const normalizeOrigin = (origin) => String(origin || '').trim().replace(/\/$/, '');
   const clientOrigins = (process.env.CLIENT_ORIGIN || 'http://localhost:5173')
     .split(',')
-    .map((value) => value.trim())
+    .map((value) => normalizeOrigin(value))
     .filter(Boolean);
   const vercelOrigins = [process.env.VERCEL_PROJECT_PRODUCTION_URL, process.env.VERCEL_URL]
     .filter(Boolean)
-    .map((value) => `https://${value}`);
+    .map((value) => normalizeOrigin(`https://${value}`));
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = path.dirname(__filename);
 
@@ -30,8 +31,14 @@ export function createApp() {
       return true;
     }
 
-    if (clientOrigins.includes(requestOrigin) || vercelOrigins.includes(requestOrigin)) {
-      return requestOrigin;
+    const normalizedRequestOrigin = normalizeOrigin(requestOrigin);
+
+    if (clientOrigins.includes('*')) {
+      return normalizedRequestOrigin;
+    }
+
+    if (clientOrigins.includes(normalizedRequestOrigin) || vercelOrigins.includes(normalizedRequestOrigin)) {
+      return normalizedRequestOrigin;
     }
 
     const forwardedProtoHeader = request.headers['x-forwarded-proto'];
@@ -44,8 +51,8 @@ export function createApp() {
       : (forwardedHostHeader || request.headers.host || '').split(',')[0].trim();
     const sameHostOrigin = forwardedHost ? `${forwardedProto}://${forwardedHost}` : '';
 
-    if (sameHostOrigin && requestOrigin === sameHostOrigin) {
-      return requestOrigin;
+    if (sameHostOrigin && normalizedRequestOrigin === normalizeOrigin(sameHostOrigin)) {
+      return normalizedRequestOrigin;
     }
 
     return false;
@@ -56,7 +63,7 @@ export function createApp() {
       const allowedOrigin = resolveAllowedOrigin(request.headers.origin, request);
 
       if (allowedOrigin === false) {
-        next(new Error('CORS origin not allowed'));
+        response.status(403).json({ message: 'CORS origin not allowed' });
         return;
       }
 
