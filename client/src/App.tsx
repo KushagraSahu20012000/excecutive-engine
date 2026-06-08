@@ -895,6 +895,17 @@ function StatsPage({ demo }: { demo: boolean }) {
     const loadStats = () => api<typeof stats>('/api/stats').then(setStats).catch(() => undefined);
     void loadStats();
 
+    const wsEnabled = import.meta.env.VITE_ENABLE_WS !== 'false';
+    if (!wsEnabled) {
+      const pollTimer = window.setInterval(() => {
+        void loadStats();
+      }, 30000);
+
+      return () => {
+        window.clearInterval(pollTimer);
+      };
+    }
+
     const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
     const wsUrl = import.meta.env.VITE_WS_BASE_URL || `${wsProtocol}://${window.location.host}/ws`;
     let socket: WebSocket | null = null;

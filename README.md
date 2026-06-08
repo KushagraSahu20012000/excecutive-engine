@@ -114,22 +114,21 @@ The production client build is emitted from `client/dist`.
 
 ## Deployment Notes
 
-- Recommended production setup: deploy this repo as one Render web service and use MongoDB Atlas for the database.
-- In production, Express serves the built React app from `client/dist`, handles `/api/*`, and hosts `/ws` for realtime stats on the same domain.
-- Build command: `npm ci --include=dev && npm run build`.
-- Start command: `npm run start`.
-- Health check path: `/api/health`.
-- Required Render environment variables:
+- Recommended production setup: deploy this repo to Vercel and use MongoDB Atlas for the database.
+- Vercel serves the Vite client from `client/dist` and runs the API via a serverless function at `api/[...route].js`.
+- Build command: `npm run build --workspace client`.
+- Install command: `npm install`.
+- Required Vercel environment variables:
 
    ```env
-   NODE_VERSION=22
    NODE_ENV=production
    MONGODB_URI=mongodb+srv://...
    JWT_SECRET=use-a-long-random-secret
-   CLIENT_ORIGIN=https://your-render-service.onrender.com
-   API_BASE_URL=https://your-render-service.onrender.com
+   CLIENT_ORIGIN=https://your-vercel-domain.vercel.app
+   API_BASE_URL=https://your-vercel-domain.vercel.app
+   VITE_ENABLE_WS=false
    ```
 
-- A `render.yaml` blueprint is included. If you use it, set `MONGODB_URI`, `CLIENT_ORIGIN`, and `API_BASE_URL` in Render after creating the service.
-- If Atlas reports TLS handshake errors during startup, confirm the Atlas Network Access list allows Render outbound connections. For a Render free web service, use `0.0.0.0/0` unless you have a paid static outbound IP setup.
-- The client uses same-origin API requests and same-origin WebSockets by default in production, so no separate frontend host is needed.
+- A root `vercel.json` is included for this monorepo layout (`client` + `server`).
+- WebSocket upgrades (`/ws`) are not supported by this Vercel serverless setup, so realtime stats auto-refresh is disabled with `VITE_ENABLE_WS=false` and replaced by polling every 30 seconds.
+- The client uses same-origin API requests by default in production, so no separate frontend host is needed.
