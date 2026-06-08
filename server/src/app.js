@@ -1,6 +1,7 @@
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import express from 'express';
+import fs from 'fs';
 import morgan from 'morgan';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -92,6 +93,12 @@ export function createApp() {
 
   if (process.env.NODE_ENV === 'production') {
     const clientDistPath = path.resolve(__dirname, '../../client/dist');
+    const shouldServeClient = process.env.SERVE_CLIENT !== 'false' && fs.existsSync(clientDistPath);
+
+    if (!shouldServeClient) {
+      return app;
+    }
+
     app.use(express.static(clientDistPath));
     app.get('*', (_request, response) => {
       response.sendFile(path.join(clientDistPath, 'index.html'));
