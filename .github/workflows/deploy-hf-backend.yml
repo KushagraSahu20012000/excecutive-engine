@@ -1,0 +1,84 @@
+name: Deploy HF Backend Space
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - server/**
+      - .github/workflows/deploy-hf-backend.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      HF_SPACE_ID: ${{ secrets.HF_SPACE_ID || 'kush20sahu/executive-engine' }}
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Validate required secrets
+        run: |
+          if [ -z "${HF_TOKEN}" ]; then
+            echo "Missing secret: HF_TOKEN (create a write token at https://huggingface.co/settings/tokens)"
+            exit 1
+          fi
+
+          echo "Deploy target Space: ${HF_SPACE_ID}"
+
+      - name: Build backend bundle for HF Space
+        run: |
+          rm -rf /tmp/hf-space-backend
+          mkdir -p /tmp/hf-space-backend
+
+          cp server/package.json /tmp/hf-space-backend/package.json
+          cp server/Dockerfile /tmp/hf-space-backend/Dockerfile
+          cp server/.dockerignore /tmp/hf-space-backend/.dockerignore
+          cp -R server/src /tmp/hf-space-backend/src
+
+          cat > /tmp/hf-space-backend/README.md <<'README'
+          ---
+          title: Executive Engine Backend
+          emoji: 🚀
+          colorFrom: blue
+          colorTo: indigo
+          sdk: docker
+          pinned: false
+          ---
+
+          Backend API for Executive Engine.
+
+          Required Hugging Face Space Secrets/Variables:
+
+          - MONGODB_URI
+          - JWT_SECRET
+          - CLIENT_ORIGIN
+          - API_BASE_URL (optional, required only for Google OAuth callback flow)
+          README
+
+      - name: Push bundle to HF Space
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          rm -rf /tmp/hf-space-repo
+          git clone "https://user:${HF_TOKEN}@huggingface.co/spaces/${HF_SPACE_ID}" /tmp/hf-space-repo
+
+          rsync -av --delete --exclude ".git" /tmp/hf-space-backend/ /tmp/hf-space-repo/
+
+          cd /tmp/hf-space-repo
+          git add .
+
+          if git diff --cached --quiet; then
+            echo "No backend changes to deploy"
+            exit 0
+          fi
+
+          git commit -m "Deploy backend from ${GITHUB_REPOSITORY}@${GITHUB_SHA}"
+          git push

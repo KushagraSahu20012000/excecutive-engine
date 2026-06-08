@@ -30,7 +30,7 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
       ...options
     });
   } catch (_error) {
-    throw new ApiError('Backend is not reachable. Start the server and check MongoDB.', 0);
+    throw new ApiError('Backend is not reachable. Check VITE_API_BASE_URL and backend deployment status.', 0);
   }
 
   if (!response.ok) {

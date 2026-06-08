@@ -114,11 +114,20 @@ The production client build is emitted from `client/dist`.
 
 ## Deployment Notes
 
-- Recommended production setup: deploy this repo to Vercel and use MongoDB Atlas for the database.
-- Vercel serves the Vite client from `client/dist` and runs the API via a serverless function at `api/index.js` from the same project.
+- Recommended production setup: deploy the UI to Vercel and deploy the backend API to Hugging Face Space.
+- Vercel serves only the Vite client from `client/dist`.
 - Build command: `npm run build --workspace client`.
 - Install command: `npm ci --include=dev`.
-- Required backend environment variables (for API runtime):
+- Required Vercel frontend environment variables:
+
+   ```env
+   VITE_API_BASE_URL=https://your-hf-space-domain.hf.space
+   VITE_ENABLE_WS=false
+   ```
+
+- The client sends requests to `${VITE_API_BASE_URL}/api/*` when `VITE_API_BASE_URL` is set.
+
+- Backend runtime environment variables (set in your HF Space deployment):
 
    ```env
    NODE_ENV=production
@@ -127,15 +136,26 @@ The production client build is emitted from `client/dist`.
    CLIENT_ORIGIN=https://your-vercel-domain.vercel.app
    ```
 
-- Required frontend environment variables:
+- Container image for backend deploy is defined in `server/Dockerfile` (with ignore rules in `server/.dockerignore`) and reused by the HF deploy workflow.
 
-   ```env
-   VITE_ENABLE_WS=false
-   ```
+- WebSocket upgrades (`/ws`) are not used in this deployment path; stats fallback polling stays enabled with `VITE_ENABLE_WS=false`.
 
-- Do not set `VITE_API_BASE_URL` for this setup. The client should call same-origin `/api/*` routes.
+### Hugging Face Space Notes
 
-- A root `vercel.json` is included for this monorepo layout (`client` + `server`). Deploy this repository with root directory set to `.` so both static app and API function are included in one Vercel project.
-- WebSocket upgrades (`/ws`) are not supported by this Vercel serverless setup, so realtime stats auto-refresh is disabled with `VITE_ENABLE_WS=false` and replaced by polling every 30 seconds.
-- The client uses same-origin API requests by default in production, so no separate frontend host is needed.
-- If Atlas IP allowlisting is enabled, use `0.0.0.0/0` for Vercel serverless egress.
+- When prompted for a password during git operations, use a Hugging Face access token with write permissions.
+- Generate a token from: `https://huggingface.co/settings/tokens`
+- Default backend Space used by the workflow: `kush20sahu/executive-engine`
+
+Manual commands:
+
+```bash
+git clone https://huggingface.co/spaces/kush20sahu/executive-engine
+```
+
+```bash
+curl -LsSf https://hf.co/cli/install.sh | bash
+```
+
+```bash
+hf download kush20sahu/executive-engine --repo-type=space
+```
