@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { addDays, differenceInSeconds, format, isBefore, parseISO } from 'date-fns';
 import { AnimatePresence, motion } from 'framer-motion';
 import { BarChart3, CalendarClock, Check, ChevronDown, Flame, Goal as GoalIcon, HelpCircle, Home, LogOut, Plus, Settings2, Star, Trash2 } from 'lucide-react';
@@ -346,13 +346,16 @@ function TodayPage({ demo, tasks, settings, setTasks, onChangeSettings, onOpenHe
   const [demoChecked, setDemoChecked] = useState<Set<string>>(new Set(['t1', 't3']));
   const [showAnchorIntro, setShowAnchorIntro] = useState(false);
   const [showTaskLimitWarning, setShowTaskLimitWarning] = useState(false);
+  const latestLoadId = useRef(0);
   const dayOptions = [
     { key: todayKey(), label: 'Today' },
     { key: yesterdayKey(), label: 'Yesterday' }
   ];
 
   async function load() {
+    const loadId = ++latestLoadId.current;
     const d = await api<{ tasks: Task[]; completions: Completion[]; summary: typeof summary }>('/api/tasks');
+    if (loadId !== latestLoadId.current) return;
     setTasks(d.tasks); setCompletions(d.completions); setSummary(d.summary);
   }
   useEffect(() => { if (!demo) void load(); }, [demo]);
