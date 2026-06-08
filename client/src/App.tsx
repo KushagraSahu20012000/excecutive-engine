@@ -27,6 +27,11 @@ const todayKey = () => {
   return `${parts.year}-${parts.month}-${parts.day}`;
 };
 
+const yesterdayKey = () => {
+  const parts = istParts(addDays(new Date(), -1));
+  return `${parts.year}-${parts.month}-${parts.day}`;
+};
+
 function istDateTimeLocal(date = new Date()) {
   const parts = istParts(date);
   return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
@@ -341,6 +346,10 @@ function TodayPage({ demo, tasks, settings, setTasks, onChangeSettings, onOpenHe
   const [demoChecked, setDemoChecked] = useState<Set<string>>(new Set(['t1', 't3']));
   const [showAnchorIntro, setShowAnchorIntro] = useState(false);
   const [showTaskLimitWarning, setShowTaskLimitWarning] = useState(false);
+  const dayOptions = [
+    { key: todayKey(), label: 'Today' },
+    { key: yesterdayKey(), label: 'Yesterday' }
+  ];
 
   async function load() {
     const d = await api<{ tasks: Task[]; completions: Completion[]; summary: typeof summary }>('/api/tasks');
@@ -403,6 +412,20 @@ function TodayPage({ demo, tasks, settings, setTasks, onChangeSettings, onOpenHe
     <motion.section className="page-grid" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }}>
       <article className="card hero-card span-12">
         <p className="eyebrow">Today</p>
+        <div className="day-switch" role="tablist" aria-label="Task completion day selector">
+          {dayOptions.map((option) => (
+            <button
+              key={option.key}
+              type="button"
+              role="tab"
+              aria-selected={currentDay === option.key}
+              className={`day-switch-button ${currentDay === option.key ? 'is-active' : ''}`}
+              onClick={() => setCurrentDay(option.key)}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
         <h1>{encouragement(pct)}</h1>
         <div className="progress-line"><span style={{ width: `${pct}%` }} /></div>
         <div className="stat-row"><strong>{displayed}</strong><span>/ {total} weekly checks</span><b>{pct}%</b></div>

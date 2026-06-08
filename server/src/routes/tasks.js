@@ -52,10 +52,12 @@ router.get('/', async (request, response) => {
     Task.find({ userId: request.user._id, archivedAt: null }).sort({ position: 1, createdAt: 1 })
   ]);
   const today = localDateKey();
+  const yesterday = localDateKey(new Date(Date.now() - 24 * 60 * 60 * 1000));
   const weekDates = activeWeekDates(settings);
+  const completionDates = Array.from(new Set([...weekDates, today, yesterday]));
   const completions = await TaskCompletion.find({
     userId: request.user._id,
-    date: { $in: [...weekDates, today] }
+    date: { $in: completionDates }
   });
   const activeTaskIds = new Set(tasks.map((task) => String(task._id)));
   const completedThisWeek = completions.reduce((total, completion) => {

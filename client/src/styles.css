@@ -139,6 +139,9 @@ button:active { transform: translateY(1px); }
 
 .hero-card { min-height: 154px; display: flex; flex-direction: column; border-top: 0; padding-top: 8px; padding-bottom: 30px; }
 .hero-card h1 { margin: 0; max-width: 520px; font: 650 clamp(30px, 5.4vw, 39px)/1.04 Literata, ui-serif, Georgia, serif; }
+.day-switch { display: inline-flex; align-self: flex-start; gap: 6px; margin: 4px 0 10px; padding: 4px; border: 1px solid var(--faint); border-radius: 999px; background: oklch(0.99 0.004 88 / 0.75); }
+.day-switch-button { border: 0; border-radius: 999px; padding: 6px 11px; background: transparent; color: var(--muted); font: 800 11px/1 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: 0.04em; text-transform: uppercase; }
+.day-switch-button.is-active { background: var(--ink); color: var(--sheet); }
 .compact { display: grid; gap: 12px; }
 .settings-card { border-top: 0; padding-top: 8px; }
 .settings-card .eyebrow { margin-bottom: 16px; }
