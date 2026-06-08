@@ -14,7 +14,7 @@ if (hasGoogleConfig) {
       {
         clientID: process.env.GOOGLE_CLIENT_ID,
         clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-        callbackURL: `${process.env.API_BASE_URL || 'http://localhost:4000'}/api/auth/google/callback`
+        callbackURL: `${process.env.API_BASE_URL || 'http://localhost:4000'}/api/session/google/callback`
       },
       async (_accessToken, _refreshToken, profile, done) => {
         try {

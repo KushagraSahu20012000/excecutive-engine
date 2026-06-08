@@ -248,7 +248,7 @@ function Login({ onAuth, initialMode = 'login' }: { onAuth: (user: User) => void
     setLoading(true);
     setError('');
     try {
-      const path = mode === 'signup' ? '/api/auth/register' : '/api/auth/login';
+      const path = mode === 'signup' ? '/api/session/register' : '/api/session/login';
       const payload = mode === 'signup' ? { displayName, email, password } : { email, password };
       const response = await api<{ user: User }>(path, { method: 'POST', ...jsonBody(payload) });
       onAuth(response.user);
@@ -1131,7 +1131,7 @@ export function App() {
   }
 
   useEffect(() => {
-    Promise.all([api<{ user: User }>('/api/auth/me'), api<{ settings: Settings }>('/api/settings')])
+    Promise.all([api<{ user: User }>('/api/session/me'), api<{ settings: Settings }>('/api/settings')])
       .then(([auth, sd]) => { setUser(auth.user); setSettings(sd.settings); setDemo(false); })
       .catch(() => {
         setUser(null);
@@ -1269,7 +1269,7 @@ export function App() {
   }, [settings, tasks, tab, effectiveDemo, resetReturnTab, isDemoTour, activeDemoStep.focus]);
 
   async function logout() {
-    if (user && !demo) await api('/api/auth/logout', { method: 'POST' });
+    if (user && !demo) await api('/api/session/logout', { method: 'POST' });
     setAutoResetOpened(false);
     setShowAuth(false);
     setUser(null); setDemo(false);

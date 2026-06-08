@@ -51,7 +51,7 @@ export function createApp() {
     next();
   });
 
-  app.use('/api/auth', authRoutes);
+  app.use('/api/session', authRoutes);
   app.use('/api/settings', settingsRoutes);
   app.use('/api/tasks', taskRoutes);
   app.use('/api/goals', goalRoutes);
