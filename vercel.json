@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "installCommand": "npm install",
+  "installCommand": "npm install --include=dev",
   "buildCommand": "if [ -f client/package.json ]; then npm --prefix client run build && rm -rf dist && mkdir -p dist && cp -R client/dist/. dist/; else npm run build; fi",
   "outputDirectory": "dist",
   "functions": {
