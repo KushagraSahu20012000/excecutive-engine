@@ -132,6 +132,7 @@ The production client build is emitted from `client/dist`.
    ```env
    NODE_ENV=production
    MONGODB_URI=mongodb+srv://<user>:<password>@<cluster>.mongodb.net/executive_engine?retryWrites=true&w=majority&appName=executive-engine
+   MONGODB_DB=executive_engine
    JWT_SECRET=use-a-long-random-secret
    CLIENT_ORIGIN=https://your-vercel-domain.vercel.app
    ```
