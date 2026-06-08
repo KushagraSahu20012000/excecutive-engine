@@ -7,6 +7,29 @@ dotenv.config();
 const app = createApp();
 let dbConnectPromise;
 let hasStartedDbConnect = false;
+const dbWaitTimeoutMs = 4500;
+
+function getPathname(urlValue) {
+  if (typeof urlValue !== 'string' || urlValue.length === 0) return '/';
+
+  try {
+    if (/^https?:\/\//i.test(urlValue)) {
+      return new URL(urlValue).pathname || '/';
+    }
+    return new URL(urlValue, 'http://localhost').pathname || '/';
+  } catch (_error) {
+    return '/';
+  }
+}
+
+function withTimeout(promise, timeoutMs) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('DB_CONNECT_TIMEOUT')), timeoutMs);
+    })
+  ]);
+}
 
 async function ensureDbConnected() {
   if (!dbConnectPromise) {
@@ -21,9 +44,19 @@ async function ensureDbConnected() {
 
 export default async function handler(request, response) {
   try {
+    const pathname = getPathname(request.url);
+
     if (!hasStartedDbConnect) {
       hasStartedDbConnect = true;
       void ensureDbConnected();
+    }
+
+    if (pathname !== '/api/health') {
+      try {
+        await withTimeout(ensureDbConnected(), dbWaitTimeoutMs);
+      } catch (_error) {
+        // Let Express middleware return consistent database status payload.
+      }
     }
 
     return app(request, response);
