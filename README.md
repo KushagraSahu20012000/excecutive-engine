@@ -115,14 +115,14 @@ The production client build is emitted from `client/dist`.
 ## Deployment Notes
 
 - Recommended production setup: deploy this repo to Vercel and use MongoDB Atlas for the database.
-- Vercel serves the Vite client from `client/dist` and runs the API via a serverless function at `api/[...route].js` from the same project.
+- Vercel serves the Vite client from `client/dist` and runs the API via a serverless function at `api/index.js` from the same project.
 - Build command: `npm run build --workspace client`.
-- Install command: `npm install`.
+- Install command: `npm ci --include=dev`.
 - Required backend environment variables (for API runtime):
 
    ```env
    NODE_ENV=production
-   MONGODB_URI=mongodb+srv://...
+   MONGODB_URI=mongodb+srv://<user>:<password>@<cluster>.mongodb.net/executive_engine?retryWrites=true&w=majority&appName=executive-engine
    JWT_SECRET=use-a-long-random-secret
    CLIENT_ORIGIN=https://your-vercel-domain.vercel.app
    ```
@@ -138,3 +138,4 @@ The production client build is emitted from `client/dist`.
 - A root `vercel.json` is included for this monorepo layout (`client` + `server`). Deploy this repository with root directory set to `.` so both static app and API function are included in one Vercel project.
 - WebSocket upgrades (`/ws`) are not supported by this Vercel serverless setup, so realtime stats auto-refresh is disabled with `VITE_ENABLE_WS=false` and replaced by polling every 30 seconds.
 - The client uses same-origin API requests by default in production, so no separate frontend host is needed.
+- If Atlas IP allowlisting is enabled, use `0.0.0.0/0` for Vercel serverless egress.
