@@ -1,8 +1,8 @@
 {
   "version": 2,
   "installCommand": "npm install",
-  "buildCommand": "npm run build --workspace client",
-  "outputDirectory": "client/dist",
+  "buildCommand": "if [ -f client/package.json ]; then npm --prefix client run build && rm -rf dist && mkdir -p dist && cp -R client/dist/. dist/; else npm run build; fi",
+  "outputDirectory": "dist",
   "functions": {
     "api/[...route].js": {
       "runtime": "nodejs22.x",
