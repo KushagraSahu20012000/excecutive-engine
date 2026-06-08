@@ -18,21 +18,49 @@ export function createApp() {
     .split(',')
     .map((value) => value.trim())
     .filter(Boolean);
+  const vercelOrigins = [process.env.VERCEL_PROJECT_PRODUCTION_URL, process.env.VERCEL_URL]
+    .filter(Boolean)
+    .map((value) => `https://${value}`);
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = path.dirname(__filename);
 
-  app.use(
-    cors({
-      origin(origin, callback) {
-        if (!origin || clientOrigins.includes(origin)) {
-          callback(null, true);
-          return;
-        }
+  function resolveAllowedOrigin(requestOrigin, request) {
+    if (!requestOrigin) {
+      return true;
+    }
 
-        callback(new Error('CORS origin not allowed'));
-      },
-      credentials: true
-    })
+    if (clientOrigins.includes(requestOrigin) || vercelOrigins.includes(requestOrigin)) {
+      return requestOrigin;
+    }
+
+    const forwardedProtoHeader = request.headers['x-forwarded-proto'];
+    const forwardedHostHeader = request.headers['x-forwarded-host'];
+    const forwardedProto = Array.isArray(forwardedProtoHeader)
+      ? forwardedProtoHeader[0]
+      : (forwardedProtoHeader || 'http').split(',')[0].trim();
+    const forwardedHost = Array.isArray(forwardedHostHeader)
+      ? forwardedHostHeader[0]
+      : (forwardedHostHeader || request.headers.host || '').split(',')[0].trim();
+    const sameHostOrigin = forwardedHost ? `${forwardedProto}://${forwardedHost}` : '';
+
+    if (sameHostOrigin && requestOrigin === sameHostOrigin) {
+      return requestOrigin;
+    }
+
+    return false;
+  }
+
+  app.use(
+    (request, response, next) => {
+      const allowedOrigin = resolveAllowedOrigin(request.headers.origin, request);
+
+      if (allowedOrigin === false) {
+        next(new Error('CORS origin not allowed'));
+        return;
+      }
+
+      cors({ origin: allowedOrigin, credentials: true })(request, response, next);
+    }
   );
   app.use(express.json());
   app.use(cookieParser());
