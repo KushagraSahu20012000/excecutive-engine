@@ -14,11 +14,26 @@ import taskRoutes from './routes/tasks.js';
 
 export function createApp() {
   const app = express();
-  const clientOrigin = process.env.CLIENT_ORIGIN || 'http://localhost:5173';
+  const clientOrigins = (process.env.CLIENT_ORIGIN || 'http://localhost:5173')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = path.dirname(__filename);
 
-  app.use(cors({ origin: clientOrigin, credentials: true }));
+  app.use(
+    cors({
+      origin(origin, callback) {
+        if (!origin || clientOrigins.includes(origin)) {
+          callback(null, true);
+          return;
+        }
+
+        callback(new Error('CORS origin not allowed'));
+      },
+      credentials: true
+    })
+  );
   app.use(express.json());
   app.use(cookieParser());
   app.use(morgan('dev'));

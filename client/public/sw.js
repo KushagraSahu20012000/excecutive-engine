@@ -16,7 +16,13 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
-  event.respondWith(
-    fetch(event.request).catch(() => caches.match(event.request).then((cached) => cached || caches.match('/')))
-  );
+  const requestUrl = new URL(event.request.url);
+  if (requestUrl.pathname.startsWith('/api/')) return;
+
+  if (event.request.mode === 'navigate') {
+    event.respondWith(fetch(event.request).catch(() => caches.match('/')));
+    return;
+  }
+
+  event.respondWith(fetch(event.request).catch(() => caches.match(event.request)));
 });

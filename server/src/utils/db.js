@@ -34,7 +34,7 @@ export async function connectDb() {
 
   mongoose.set('strictQuery', true);
   try {
-    await mongoose.connect(uri, { serverSelectionTimeoutMS: 10000 });
+    await mongoose.connect(uri, { serverSelectionTimeoutMS: 5000 });
   } catch (error) {
     lastConnectionError = sanitizeError(error);
     throw error;

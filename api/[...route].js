@@ -6,6 +6,25 @@ dotenv.config();
 
 const app = createApp();
 let dbConnectPromise;
+let hasStartedDbConnect = false;
+
+function normalizeApiUrl(urlValue) {
+  if (typeof urlValue !== 'string' || urlValue.length === 0) return '/api';
+
+  // Handle both absolute URLs and relative request paths.
+  let pathnameAndQuery = urlValue;
+  if (/^https?:\/\//i.test(urlValue)) {
+    try {
+      const parsed = new URL(urlValue);
+      pathnameAndQuery = `${parsed.pathname || '/'}${parsed.search || ''}`;
+    } catch (_error) {
+      pathnameAndQuery = '/api';
+    }
+  }
+
+  const normalized = pathnameAndQuery.startsWith('/') ? pathnameAndQuery : `/${pathnameAndQuery}`;
+  return normalized.startsWith('/api') ? normalized : `/api${normalized}`;
+}
 
 async function ensureDbConnected() {
   if (!dbConnectPromise) {
@@ -20,14 +39,15 @@ async function ensureDbConnected() {
 
 export default async function handler(request, response) {
   try {
-    // Some serverless adapters may pass the path without the /api prefix.
-    // Normalize it so Express route mounting remains consistent.
-    if (typeof request.url === 'string' && !request.url.startsWith('/api')) {
-      const normalizedPath = request.url.startsWith('/') ? request.url : `/${request.url}`;
-      request.url = `/api${normalizedPath}`;
+    request.url = normalizeApiUrl(request.url);
+
+    // Do not block requests on initial DB connect in serverless.
+    // API routes will return 503 until the connection is ready.
+    if (!hasStartedDbConnect) {
+      hasStartedDbConnect = true;
+      void ensureDbConnected();
     }
 
-    await ensureDbConnected();
     return app(request, response);
   } catch (error) {
     console.error('Database connection failed for Vercel request', error);

@@ -75,7 +75,11 @@ router.get('/me', requireAuth, (request, response) => {
 });
 
 router.post('/logout', (_request, response) => {
-  response.clearCookie('ee_token');
+  response.clearCookie('ee_token', {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production'
+  });
   response.json({ ok: true });
 });
 
