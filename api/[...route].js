@@ -20,6 +20,13 @@ async function ensureDbConnected() {
 
 export default async function handler(request, response) {
   try {
+    // Some serverless adapters may pass the path without the /api prefix.
+    // Normalize it so Express route mounting remains consistent.
+    if (typeof request.url === 'string' && !request.url.startsWith('/api')) {
+      const normalizedPath = request.url.startsWith('/') ? request.url : `/${request.url}`;
+      request.url = `/api${normalizedPath}`;
+    }
+
     await ensureDbConnected();
     return app(request, response);
   } catch (error) {
