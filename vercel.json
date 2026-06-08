@@ -1,7 +1,7 @@
 {
   "version": 2,
   "installCommand": "npm install",
-  "buildCommand": "npm run build --workspace client && rm -rf dist && cp -R client/dist dist",
+  "buildCommand": "npm --prefix client run build && rm -rf dist && mkdir -p dist && cp -R client/dist/. dist/",
   "outputDirectory": "dist",
   "functions": {
     "api/[...route].js": {
