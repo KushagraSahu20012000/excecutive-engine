@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import express from 'express';
-import { requireAuth, setAuthCookie, signAuthToken } from '../middleware/auth.js';
+import { authCookieOptions, requireAuth, setAuthCookie, signAuthToken } from '../middleware/auth.js';
 import { Setting } from '../models/Setting.js';
 import { User } from '../models/User.js';
 
@@ -75,11 +75,7 @@ router.get('/me', requireAuth, (request, response) => {
 });
 
 router.post('/logout', (_request, response) => {
-  response.clearCookie('ee_token', {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production'
-  });
+  response.clearCookie('ee_token', authCookieOptions());
   response.json({ ok: true });
 });
 

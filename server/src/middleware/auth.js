@@ -1,17 +1,27 @@
 import jwt from 'jsonwebtoken';
 import { User } from '../models/User.js';
 
+export function authCookieOptions() {
+  const isProduction = process.env.NODE_ENV === 'production';
+  const sameSite = process.env.COOKIE_SAMESITE || (isProduction ? 'none' : 'lax');
+  const secure = process.env.COOKIE_SECURE
+    ? process.env.COOKIE_SECURE === 'true'
+    : (isProduction || sameSite === 'none');
+
+  return {
+    httpOnly: true,
+    sameSite,
+    secure,
+    maxAge: 14 * 24 * 60 * 60 * 1000
+  };
+}
+
 export function signAuthToken(user) {
   return jwt.sign({ sub: user.id }, process.env.JWT_SECRET, { expiresIn: '14d' });
 }
 
 export function setAuthCookie(response, token) {
-  response.cookie('ee_token', token, {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
-    maxAge: 14 * 24 * 60 * 60 * 1000
-  });
+  response.cookie('ee_token', token, authCookieOptions());
 }
 
 export async function requireAuth(request, response, next) {
