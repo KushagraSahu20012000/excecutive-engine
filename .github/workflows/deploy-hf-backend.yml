@@ -15,6 +15,7 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment: production
     env:
       HF_SPACE_ID: ${{ secrets.HF_SPACE_ID || 'kush20sahu/executive-engine' }}
       HF_TOKEN: ${{ secrets.HF_TOKEN }}
