@@ -71,6 +71,10 @@ export function createApp() {
     response.json({ ok: true, database: getDbStatus() });
   });
 
+  app.get('/', (_request, response) => {
+    response.status(200).json({ service: 'Executive Engine API', ok: true });
+  });
+
   app.use('/api', (_request, response, next) => {
     if (!isDbConnected()) {
       response.status(503).json({ message: 'Database unavailable', database: getDbStatus() });
@@ -95,14 +99,12 @@ export function createApp() {
     const clientDistPath = path.resolve(__dirname, '../../client/dist');
     const shouldServeClient = process.env.SERVE_CLIENT !== 'false' && fs.existsSync(clientDistPath);
 
-    if (!shouldServeClient) {
-      return app;
+    if (shouldServeClient) {
+      app.use(express.static(clientDistPath));
+      app.get('*', (_request, response) => {
+        response.sendFile(path.join(clientDistPath, 'index.html'));
+      });
     }
-
-    app.use(express.static(clientDistPath));
-    app.get('*', (_request, response) => {
-      response.sendFile(path.join(clientDistPath, 'index.html'));
-    });
   }
 
   app.use((error, _request, response, _next) => {
