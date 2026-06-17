@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { addDays, differenceInSeconds, format, isBefore, parseISO } from 'date-fns';
 import { AnimatePresence, motion } from 'framer-motion';
-import { BarChart3, CalendarClock, Check, ChevronDown, Flame, Goal as GoalIcon, HelpCircle, Home, LogOut, Plus, Settings2, Star, Trash2 } from 'lucide-react';
+import { BarChart3, CalendarClock, Check, ChevronDown, Flame, Goal as GoalIcon, HelpCircle, Home, LogOut, Pencil, Plus, Settings2, Star, Trash2 } from 'lucide-react';
 import { Bar, BarChart, Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { api, jsonBody } from './api';
 import { MOCK_DEADLINES, MOCK_GOALS, MOCK_SETTINGS, MOCK_STATS, MOCK_TASKS, MOCK_USER } from './mockData';
@@ -163,7 +163,15 @@ async function ensureNotificationPermission() {
 
 async function showBrowserNotification(title: string, options: NotificationOptions = {}) {
   if (!(await ensureNotificationPermission())) return false;
-  new Notification(title, { icon: '/vite.svg', requireInteraction: true, ...options });
+  if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+    const registration = await navigator.serviceWorker.getRegistration();
+    if (registration) {
+      await registration.showNotification(title, { icon: '/icon-192.png', requireInteraction: true, ...options });
+      return true;
+    }
+  }
+
+  new Notification(title, { icon: '/icon-192.png', requireInteraction: true, ...options });
   return true;
 }
 
@@ -1019,7 +1027,30 @@ function StatsPage({ demo }: { demo: boolean }) {
   );
 }
 
-function SettingsPage({ settings, tasks, onChange, onRemoveTask }: { settings: Settings; tasks: Task[]; onChange: (next: Settings) => void; onRemoveTask: (taskId: string) => void }) {
+function SettingsPage({ settings, tasks, onChange, onEditTask, onRemoveTask }: { settings: Settings; tasks: Task[]; onChange: (next: Settings) => void; onEditTask: (taskId: string, title: string) => void; onRemoveTask: (taskId: string) => void }) {
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState('');
+
+  function startTaskEdit(task: Task) {
+    setEditingTaskId(task._id);
+    setEditingTitle(task.title);
+  }
+
+  function cancelTaskEdit() {
+    setEditingTaskId(null);
+    setEditingTitle('');
+  }
+
+  function saveTaskEdit(task: Task) {
+    const title = editingTitle.trim();
+    if (!title || title === task.title) {
+      cancelTaskEdit();
+      return;
+    }
+    onEditTask(task._id, title);
+    cancelTaskEdit();
+  }
+
   return (
     <motion.section className="page-grid" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }}>
       <article className="card compact settings-card span-12">
@@ -1035,12 +1066,40 @@ function SettingsPage({ settings, tasks, onChange, onRemoveTask }: { settings: S
         <p className="settings-note">Keeps deadlines in your notification panel and reminds you at 11 PM, then again at 11:45 PM if anything is still unchecked.</p>
       </article>
       <article className="card compact span-12">
-        <h2>Delete Tasks</h2>
+        <h2>Edit or Delete Tasks</h2>
         <div className="task-list settings-task-list">
           {tasks.map((task) => (
             <div className="task-item settings-task-item" key={task._id}>
-              <span>{task.title}</span>
-              <button className="icon-button" onClick={() => onRemoveTask(task._id)} aria-label={`Remove ${task.title}`}><Trash2 size={17} /></button>
+              {editingTaskId === task._id ? (
+                <input
+                  value={editingTitle}
+                  onChange={(event) => setEditingTitle(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      event.preventDefault();
+                      saveTaskEdit(task);
+                    }
+                    if (event.key === 'Escape') {
+                      event.preventDefault();
+                      cancelTaskEdit();
+                    }
+                  }}
+                  autoFocus
+                />
+              ) : (
+                <span>{task.title}</span>
+              )}
+              <div className="settings-task-actions">
+                {editingTaskId === task._id ? (
+                  <>
+                    <button className="text-button" onClick={() => saveTaskEdit(task)} aria-label={`Save ${task.title}`}>Save</button>
+                    <button className="text-button" onClick={cancelTaskEdit} aria-label={`Cancel editing ${task.title}`}>Cancel</button>
+                  </>
+                ) : (
+                  <button className="icon-button" onClick={() => startTaskEdit(task)} aria-label={`Edit ${task.title}`}><Pencil size={17} /></button>
+                )}
+                <button className="icon-button" onClick={() => onRemoveTask(task._id)} aria-label={`Remove ${task.title}`}><Trash2 size={17} /></button>
+              </div>
             </div>
           ))}
         </div>
@@ -1279,9 +1338,28 @@ export function App() {
   }
 
   async function removeTaskFromSettings(taskId: string) {
+    const previousTasks = tasks;
     setTasks((previous) => previous.filter((task) => task._id !== taskId));
     if (settings.anchorTaskId === taskId) setSettings((current) => ({ ...current, anchorTaskId: null }));
-    if (!demo) await api(`/api/tasks/${taskId}`, { method: 'DELETE' });
+    if (!demo) {
+      try {
+        await api(`/api/tasks/${taskId}`, { method: 'DELETE' });
+      } catch (_error) {
+        setTasks(previousTasks);
+      }
+    }
+  }
+
+  async function editTaskFromSettings(taskId: string, title: string) {
+    const previousTasks = tasks;
+    setTasks((current) => current.map((task) => (task._id === taskId ? { ...task, title } : task)));
+    if (!demo) {
+      try {
+        await api(`/api/tasks/${taskId}`, { method: 'PATCH', ...jsonBody({ title }) });
+      } catch (_error) {
+        setTasks(previousTasks);
+      }
+    }
   }
 
   const content = useMemo(() => {
@@ -1291,7 +1369,7 @@ export function App() {
     if (tab === 'stats') return <StatsPage demo={effectiveDemo} />;
     if (tab === 'help') return <HelpPage />;
     if (tab === 'reset') return <MessUpPage onBack={() => setTab(resetReturnTab)} />;
-    return <SettingsPage settings={settings} tasks={tasks} onChange={(next) => void saveSettings(next)} onRemoveTask={(taskId) => void removeTaskFromSettings(taskId)} />;
+    return <SettingsPage settings={settings} tasks={tasks} onChange={(next) => void saveSettings(next)} onEditTask={(taskId, title) => void editTaskFromSettings(taskId, title)} onRemoveTask={(taskId) => void removeTaskFromSettings(taskId)} />;
   }, [settings, tasks, tab, effectiveDemo, resetReturnTab, isDemoTour, activeDemoStep.focus]);
 
   async function logout() {

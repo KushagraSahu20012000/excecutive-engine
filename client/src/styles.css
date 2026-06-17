@@ -276,7 +276,9 @@ button:hover, .primary-action:hover { background: var(--ink); }
 .task-item .pencil-box.checked:hover { background: oklch(1 0 0 / 0.08); border-color: var(--ink); }
 .task-item .icon-button:hover { border-color: var(--faint); background: transparent; color: var(--ink); }
 .settings-task-list { margin-top: 0; }
-.settings-task-item { grid-template-columns: minmax(0, 1fr) 34px; column-gap: 4px; padding: 8px 4px 8px 10px; }
+.settings-task-item { grid-template-columns: minmax(0, 1fr) auto; column-gap: 8px; padding: 8px 6px 8px 10px; }
+.settings-task-item input { width: 100%; }
+.settings-task-actions { display: inline-flex; align-items: center; gap: 6px; justify-self: end; }
 .settings-task-item .icon-button { justify-self: end; }
 
 .goal-card { display: grid; gap: 28px; }
@@ -506,8 +508,9 @@ button:hover, .primary-action:hover { background: var(--ink); }
   .task-item span { font-size: 15.5px; line-height: 1.3; }
   .task-item { grid-template-columns: 32px minmax(0, 1fr) 38px; column-gap: 16px; }
     .task-item .icon-button { width: 36px; height: 36px; }
-  .settings-task-item { grid-template-columns: minmax(0, 1fr) 34px; column-gap: 4px; padding: 8px 4px 8px 10px; }
+  .settings-task-item { grid-template-columns: minmax(0, 1fr) auto; column-gap: 8px; padding: 8px 6px 8px 10px; }
   .settings-task-item .icon-button { width: 34px; height: 34px; justify-self: end; }
+  .settings-task-actions { gap: 4px; }
   .tabbar { left: 0; right: 0; bottom: 0; transform: none; width: auto; border-left: 0; border-right: 0; border-bottom: 0; border-radius: 0; }
   .demo-cloud { left: 0; right: 0; bottom: 40px; transform: none; width: auto; max-height: min(220px, calc(100vh - 90px)); border-left: 0; border-right: 0; border-bottom: 0; border-radius: 14px 14px 0 0; }
   .demo-skip-button { left: 0; right: 0; bottom: 0; transform: none; width: auto; border-left: 0; border-right: 0; border-bottom: 0; border-radius: 0; }

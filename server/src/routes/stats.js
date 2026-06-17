@@ -1,11 +1,11 @@
 import express from 'express';
-import { differenceInMinutes, eachDayOfInterval, endOfWeek, format, getDay, startOfDay, startOfWeek, subWeeks } from 'date-fns';
+import { differenceInMinutes, eachDayOfInterval, endOfWeek, format, getDay, startOfWeek, subWeeks } from 'date-fns';
 import { requireAuth } from '../middleware/auth.js';
 import { Deadline } from '../models/Deadline.js';
 import { Setting } from '../models/Setting.js';
 import { Task } from '../models/Task.js';
 import { TaskCompletion } from '../models/TaskCompletion.js';
-import { localDateKey } from '../utils/dates.js';
+import { localDateKey, parseDateKey } from '../utils/dates.js';
 
 const router = express.Router();
 router.use(requireAuth);
@@ -43,7 +43,7 @@ function completionBelongsToDenominator(completion, tasksById, dateKey) {
 }
 
 function taskDatesFromCreation(task, settings, today) {
-  const start = startOfDay(task.createdAt);
+  const start = parseDateKey(localDateKey(task.createdAt));
   if (start > today) return [];
   return eachDayOfInterval({ start, end: today })
     .filter((day) => dateIsAllowed(day, settings))
@@ -83,7 +83,7 @@ router.get('/', async (request, response) => {
     { outcome: 'fail' }
   );
 
-  const [settings, tasks, deadlines] = await Promise.all([
+  const [settings, allTasks, deadlines] = await Promise.all([
     Setting.findOneAndUpdate(
       { userId: request.user._id },
       { $setOnInsert: { userId: request.user._id } },
@@ -93,21 +93,23 @@ router.get('/', async (request, response) => {
     Deadline.find({ userId: request.user._id })
   ]);
 
-  const today = startOfDay(new Date());
+  const activeTasks = allTasks.filter((task) => !task.archivedAt);
+
+  const today = parseDateKey(localDateKey());
   const todayDateKey = localDateKey(today);
   const weekStarts = Array.from({ length: 8 }, (_, index) => startOfWeek(subWeeks(new Date(), 7 - index), { weekStartsOn: 1 }));
   const allDates = weekStarts.flatMap((weekStart) => allowedDaysForWeek(weekStart, settings));
-  const earliestTaskDate = tasks.reduce((earliest, task) => {
-    const createdAt = startOfDay(task.createdAt);
+  const earliestTaskDate = allTasks.reduce((earliest, task) => {
+    const createdAt = parseDateKey(localDateKey(task.createdAt));
     return !earliest || createdAt < earliest ? createdAt : earliest;
   }, null);
   const completions = earliestTaskDate
     ? await TaskCompletion.find({ userId: request.user._id, date: { $gte: localDateKey(earliestTaskDate), $lte: todayDateKey } })
     : [];
-  const tasksById = new Map(tasks.map((task) => [String(task._id), task]));
+  const tasksById = new Map(allTasks.map((task) => [String(task._id), task]));
   const weekly = weekStarts.map((weekStart) => {
     const weekDates = allowedDaysForWeek(weekStart, settings);
-    const total = historicalWeekTotal(tasks, weekDates);
+    const total = historicalWeekTotal(allTasks, weekDates);
     const completed = completions.filter((completion) => (
       weekDates.includes(completion.date)
       && completionBelongsToDenominator(completion, tasksById, completion.date)
@@ -125,7 +127,7 @@ router.get('/', async (request, response) => {
   });
 
   const completionKeys = new Set(completions.map((completion) => `${String(completion.taskId)}:${completion.date}`));
-  const missedTasks = tasks
+  const missedTasks = activeTasks
     .map((task) => {
       const missed = taskDatesFromCreation(task, settings, today)
         .filter((dateKey) => !completionKeys.has(`${String(task._id)}:${dateKey}`))
@@ -145,8 +147,11 @@ router.get('/', async (request, response) => {
       continue;
     }
     const key = localDateKey(date);
-    const total = tasks.filter((task) => taskIsActiveOnDate(task, key)).length;
-    const percent = total ? ((byDate.get(key) || 0) / total) * 100 : 0;
+    const total = allTasks.filter((task) => taskIsActiveOnDate(task, key)).length;
+    if (!total) {
+      continue;
+    }
+    const percent = ((byDate.get(key) || 0) / total) * 100;
     if (percent >= 50) streak += 1;
     else break;
   }
