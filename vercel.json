@@ -5,6 +5,10 @@
   "outputDirectory": "client/dist",
   "routes": [
     {
+      "src": "/api/(.*)",
+      "dest": "https://kush20sahu-executive-engine.hf.space/api/$1"
+    },
+    {
       "handle": "filesystem"
     },
     {

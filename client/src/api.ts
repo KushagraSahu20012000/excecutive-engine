@@ -13,6 +13,11 @@ function buildApiUrl(path: string) {
   if (/^https?:\/\//.test(path)) return path;
   if (!API_BASE) return path;
 
+  if (typeof window !== 'undefined') {
+    const isLocalHost = /^(localhost|127\.0\.0\.1)$/.test(window.location.hostname);
+    if (!isLocalHost) return path;
+  }
+
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
   return `${API_BASE}${normalizedPath}`;
 }
