@@ -1,5 +1,4 @@
 import cookieParser from 'cookie-parser';
-import cors from 'cors';
 import express from 'express';
 import fs from 'fs';
 import morgan from 'morgan';
@@ -59,18 +58,33 @@ export function createApp() {
     return false;
   }
 
-  app.use(
-    (request, response, next) => {
-      const allowedOrigin = resolveAllowedOrigin(request.headers.origin, request);
+  app.use((request, response, next) => {
+    const requestOrigin = request.headers.origin;
+    const allowedOrigin = resolveAllowedOrigin(requestOrigin, request);
 
-      if (allowedOrigin === false) {
-        response.status(403).json({ message: 'CORS origin not allowed' });
-        return;
-      }
-
-      cors({ origin: allowedOrigin, credentials: true })(request, response, next);
+    if (allowedOrigin === false) {
+      response.status(403).json({ message: 'CORS origin not allowed' });
+      return;
     }
-  );
+
+    if (requestOrigin) {
+      response.setHeader('Access-Control-Allow-Origin', String(allowedOrigin));
+      response.setHeader('Access-Control-Allow-Credentials', 'true');
+      response.setHeader('Vary', 'Origin, Access-Control-Request-Method, Access-Control-Request-Headers');
+    }
+
+    if (request.method === 'OPTIONS') {
+      const requestedMethod = request.headers['access-control-request-method'];
+      const requestedHeaders = request.headers['access-control-request-headers'];
+      response.setHeader('Access-Control-Allow-Methods', requestedMethod || 'GET,HEAD,POST,PUT,PATCH,DELETE');
+      response.setHeader('Access-Control-Allow-Headers', requestedHeaders || 'Content-Type, Authorization');
+      response.setHeader('Access-Control-Max-Age', '600');
+      response.status(204).end();
+      return;
+    }
+
+    next();
+  });
   app.use(express.json());
   app.use(cookieParser());
   app.use(morgan('dev'));
