@@ -61,6 +61,7 @@ export function createApp() {
   app.use((request, response, next) => {
     const requestOrigin = request.headers.origin;
     const allowedOrigin = resolveAllowedOrigin(requestOrigin, request);
+    response.setHeader('X-EE-CORS-Version', '2');
 
     if (allowedOrigin === false) {
       response.status(403).json({ message: 'CORS origin not allowed' });
