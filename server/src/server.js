@@ -3,6 +3,7 @@ import http from 'http';
 import { connectDb } from './utils/db.js';
 import { createApp } from './app.js';
 import { initRealtime } from './utils/realtime.js';
+import { startAlarmScheduler } from './utils/scheduler.js';
 
 dotenv.config();
 
@@ -12,6 +13,7 @@ const port = process.env.PORT || 4000;
 const dbRetryDelayMs = 10000;
 
 initRealtime(server);
+startAlarmScheduler();
 
 async function connectDbWithRetry() {
   try {

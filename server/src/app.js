@@ -9,6 +9,7 @@ import { getDbStatus, isDbConnected } from './utils/db.js';
 import authRoutes from './routes/auth.js';
 import deadlineRoutes from './routes/deadlines.js';
 import goalRoutes from './routes/goals.js';
+import pushRoutes from './routes/push.js';
 import settingsRoutes from './routes/settings.js';
 import statsRoutes from './routes/stats.js';
 import taskRoutes from './routes/tasks.js';
@@ -97,6 +98,7 @@ export function createApp() {
   app.use('/api/goals', goalRoutes);
   app.use('/api/deadlines', deadlineRoutes);
   app.use('/api/stats', statsRoutes);
+  app.use('/api/push', pushRoutes);
 
   app.use('/api', (_request, response) => {
     response.status(404).json({ message: 'API route not found' });

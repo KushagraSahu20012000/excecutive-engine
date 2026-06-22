@@ -69,9 +69,25 @@ router.post('/:goalId/actions', async (request, response) => {
   const action = await GoalAction.create({
     userId: request.user._id,
     goalId: request.params.goalId,
-    title: request.body.title
+    title: request.body.title,
+    time: request.body.time || ''
   });
   response.status(201).json({ action });
+});
+
+router.patch('/:goalId/actions/:actionId', async (request, response) => {
+  const update = {};
+  if (typeof request.body.title === 'string') update.title = request.body.title;
+  if (typeof request.body.time === 'string') {
+    update.time = request.body.time;
+    update.lastFiredKey = '';
+  }
+  const action = await GoalAction.findOneAndUpdate(
+    { _id: request.params.actionId, goalId: request.params.goalId, userId: request.user._id },
+    update,
+    { new: true }
+  );
+  response.json({ action });
 });
 
 router.delete('/:goalId/actions/:actionId', async (request, response) => {

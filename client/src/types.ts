@@ -27,6 +27,7 @@ export type Completion = {
 export type GoalAction = {
   _id: string;
   title: string;
+  time?: string;
   createdAt?: string;
 };
 

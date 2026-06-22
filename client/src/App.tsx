@@ -5,7 +5,7 @@ import { BarChart3, CalendarClock, Check, ChevronDown, Flame, Goal as GoalIcon, 
 import { Bar, BarChart, Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { api, jsonBody } from './api';
 import { MOCK_DEADLINES, MOCK_GOALS, MOCK_SETTINGS, MOCK_STATS, MOCK_TASKS, MOCK_USER } from './mockData';
-import type { Completion, Deadline, Goal, Settings, Task, User } from './types';
+import type { Completion, Deadline, Goal, GoalAction, Settings, Task, User } from './types';
 
 const IST_TIME_ZONE = 'Asia/Kolkata';
 
@@ -96,8 +96,8 @@ const DEMO_STEPS = [
     tab: 'goals',
     focus: 'goalDetail',
     cloud: 'bottom',
-    title: 'Add daily actions and notes',
-    body: 'Break the goal into daily actions, mark them complete at the end of the day, and note what worked and what did not. This turns the goal into a system you can improve.'
+    title: 'Add next day tasks and notes',
+    body: 'Break the goal into specific next day tasks, set a time so an alarm reminds you, mark them complete, and note what worked and what did not. This turns the goal into a system you can improve.'
   },
   {
     tab: 'deadlines',
@@ -175,6 +175,61 @@ async function showBrowserNotification(title: string, options: NotificationOptio
   return true;
 }
 
+function urlBase64ToUint8Array(base64String: string) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const output = new Uint8Array(rawData.length);
+  for (let index = 0; index < rawData.length; index += 1) output[index] = rawData.charCodeAt(index);
+  return output;
+}
+
+/**
+ * Registers a Web Push subscription with the backend so alarms can fire even
+ * when the app is fully closed. Safe to call repeatedly.
+ */
+async function ensurePushSubscription() {
+  if (typeof window === 'undefined' || !('serviceWorker' in navigator) || !('PushManager' in window)) return false;
+  if (!(await ensureNotificationPermission())) return false;
+
+  try {
+    const keyData = await api<{ publicKey: string; enabled: boolean }>('/api/push/public-key').catch(() => null);
+    if (!keyData || !keyData.enabled || !keyData.publicKey) return false;
+
+    const registration = await navigator.serviceWorker.ready;
+    let subscription = await registration.pushManager.getSubscription();
+    if (!subscription) {
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(keyData.publicKey)
+      });
+    }
+
+    const json = subscription.toJSON();
+    await api('/api/push/subscription', {
+      method: 'POST',
+      ...jsonBody({ endpoint: json.endpoint, keys: json.keys, platform: 'web' })
+    });
+    return true;
+  } catch (error) {
+    console.warn('Push subscription failed', error);
+    return false;
+  }
+}
+
+async function removePushSubscription() {
+  if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
+  try {
+    const registration = await navigator.serviceWorker.getRegistration();
+    const subscription = await registration?.pushManager.getSubscription();
+    if (!subscription) return;
+    await api('/api/push/subscription', { method: 'DELETE', ...jsonBody({ endpoint: subscription.endpoint }) }).catch(() => undefined);
+    await subscription.unsubscribe().catch(() => undefined);
+  } catch (error) {
+    console.warn('Push unsubscribe failed', error);
+  }
+}
+
 function markNotificationSent(key: string) {
   window.localStorage.setItem(key, new Date().toISOString());
 }
@@ -198,6 +253,72 @@ function scheduleDaily(hour: number, minute: number, callback: () => void) {
   scheduleNext();
   return () => window.clearTimeout(timeoutId);
 }
+
+function formatTaskTime(time?: string) {
+  if (!time) return '';
+  const [hour, minute] = time.split(':').map(Number);
+  if (Number.isNaN(hour) || Number.isNaN(minute)) return '';
+  const date = new Date();
+  date.setHours(hour, minute, 0, 0);
+  return new Intl.DateTimeFormat('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true }).format(date);
+}
+
+function playAlarmSound() {
+  try {
+    const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioCtx) return;
+    const context = new AudioCtx();
+    const start = context.currentTime;
+    for (let beep = 0; beep < 5; beep += 1) {
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      oscillator.type = 'square';
+      oscillator.frequency.value = beep % 2 === 0 ? 1320 : 1660;
+      const beepStart = start + beep * 0.34;
+      gain.gain.setValueAtTime(0.0001, beepStart);
+      gain.gain.exponentialRampToValueAtTime(0.5, beepStart + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, beepStart + 0.24);
+      oscillator.connect(gain).connect(context.destination);
+      oscillator.start(beepStart);
+      oscillator.stop(beepStart + 0.26);
+    }
+    window.setTimeout(() => void context.close(), 2200);
+  } catch {
+    // Audio playback can be blocked until a user gesture; ignore.
+  }
+}
+
+async function fireTaskAlarm(goalTitle: string, task: { _id: string; title: string; time?: string }) {
+  playAlarmSound();
+  await showBrowserNotification(`Task: ${task.title}`, {
+    body: `Goal: ${goalTitle}${task.time ? ` · ${formatTaskTime(task.time)} IST` : ''}. Time to do this now.`,
+    tag: `executive-engine-goal-task-${task._id}`,
+    requireInteraction: true
+  });
+}
+
+function scheduleTaskAlarm(time: string, onFire: () => void) {
+  const [hour, minute] = time.split(':').map(Number);
+  if (Number.isNaN(hour) || Number.isNaN(minute)) return () => undefined;
+  let timeoutId = 0;
+  const scheduleNext = () => {
+    const now = new Date();
+    const parts = istParts(now);
+    let next = new Date(`${parts.year}-${parts.month}-${parts.day}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00+05:30`);
+    if (next <= now) next = new Date(next.getTime() + 24 * 60 * 60 * 1000);
+    timeoutId = window.setTimeout(() => {
+      onFire();
+      scheduleNext();
+    }, next.getTime() - now.getTime());
+  };
+  scheduleNext();
+  return () => window.clearTimeout(timeoutId);
+}
+
+const GOAL_ALARMS_CHANGED_EVENT = 'executive-engine:goal-alarms-changed';
+const notifyGoalAlarmsChanged = () => {
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(GOAL_ALARMS_CHANGED_EVENT));
+};
 
 function dateKeyFromValue(value?: string) {
   if (!value) return todayKey();
@@ -568,18 +689,25 @@ function GoalsPage({ demo, demoOpenGoal = false, onOpenMessUp }: { demo: boolean
     if (!demo) { await api(`/api/goals/${goal._id}`, { method: 'DELETE' }); await load(); }
   }
 
-  async function addAction(gid: string, title: string) {
+  async function addAction(gid: string, title: string, time: string) {
     if (!title.trim()) return;
-    if (demo) { setGoals((p) => p.map((g) => g._id === gid ? { ...g, actions: [...g.actions, { _id: `a${Date.now()}`, title }] } : g)); return; }
-    await api(`/api/goals/${gid}/actions`, { method: 'POST', ...jsonBody({ title }) }); await load();
+    if (demo) { setGoals((p) => p.map((g) => g._id === gid ? { ...g, actions: [...g.actions, { _id: `a${Date.now()}`, title, time }] } : g)); notifyGoalAlarmsChanged(); return; }
+    await api(`/api/goals/${gid}/actions`, { method: 'POST', ...jsonBody({ title, time }) }); await load(); notifyGoalAlarmsChanged();
+  }
+
+  async function editAction(gid: string, aid: string, title: string, time: string) {
+    if (!title.trim()) return;
+    if (demo) { setGoals((p) => p.map((g) => g._id === gid ? { ...g, actions: g.actions.map((a) => a._id === aid ? { ...a, title, time } : a) } : g)); notifyGoalAlarmsChanged(); return; }
+    await api(`/api/goals/${gid}/actions/${aid}`, { method: 'PATCH', ...jsonBody({ title, time }) }); await load(); notifyGoalAlarmsChanged();
   }
 
   async function removeAction(gid: string, aid: string) {
     if (demo) {
       setGoals((p) => p.map((g) => g._id === gid ? { ...g, actions: g.actions.filter((a) => a._id !== aid), completions: g.completions.filter((c) => c.actionId !== aid) } : g));
+      notifyGoalAlarmsChanged();
       return;
     }
-    await api(`/api/goals/${gid}/actions/${aid}`, { method: 'DELETE' }); await load();
+    await api(`/api/goals/${gid}/actions/${aid}`, { method: 'DELETE' }); await load(); notifyGoalAlarmsChanged();
   }
 
   async function toggleAction(gid: string, aid: string) {
@@ -613,7 +741,7 @@ function GoalsPage({ demo, demoOpenGoal = false, onOpenMessUp }: { demo: boolean
             <div><p className="eyebrow">Goal</p><h2>{selectedGoal.title}</h2><p className="muted">{selectedGoal.description}</p></div>
             <div className="countdown glass-panel"><b>{t.days}</b><span>d</span><b>{t.hours}</b><span>h</span><b>{t.minutes}</b><span>m</span><b>{t.seconds}</b><span>s</span></div>
           </div>
-          <GoalTools goal={selectedGoal} completed={done} onAddAction={addAction} onToggleAction={toggleAction} onRemoveAction={removeAction} onAddNote={addNote} />
+          <GoalTools goal={selectedGoal} completed={done} onAddAction={addAction} onEditAction={editAction} onToggleAction={toggleAction} onRemoveAction={removeAction} onAddNote={addNote} />
           <GoalProgressPanel progress={progress} />
           <MessUpButton onClick={onOpenMessUp} />
         </article>
@@ -625,7 +753,7 @@ function GoalsPage({ demo, demoOpenGoal = false, onOpenMessUp }: { demo: boolean
     <motion.section className="page-grid" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }}>
       <article className="card span-12">
         <p className="eyebrow">Goals</p>
-        <p className="goal-page-note">Create long term goals, give each one a daily action plan, and add notes based on what works.</p>
+        <p className="goal-page-note">Create long term goals, give each one specific next day tasks with alarm times, and add notes based on what works.</p>
         <form className="goal-form" onSubmit={addGoal}>
           <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Goal title" />
           <input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Description" />
@@ -754,22 +882,93 @@ function MessUpPage({ onBack }: { onBack: () => void }) {
   );
 }
 
-function GoalTools({ goal, completed, onAddAction, onToggleAction, onRemoveAction, onAddNote }: { goal: Goal; completed: Set<string>; onAddAction: (g: string, t: string) => Promise<void>; onToggleAction: (g: string, a: string) => Promise<void>; onRemoveAction: (g: string, a: string) => Promise<void>; onAddNote: (g: string, k: 'works' | 'doesnt', b: string) => Promise<void> }) {
-  const [at, setAt] = useState(''); const [wk, setWk] = useState(''); const [dn, setDn] = useState('');
+function GoalTools({ goal, completed, onAddAction, onEditAction, onToggleAction, onRemoveAction, onAddNote }: { goal: Goal; completed: Set<string>; onAddAction: (g: string, t: string, time: string) => Promise<void>; onEditAction: (g: string, a: string, t: string, time: string) => Promise<void>; onToggleAction: (g: string, a: string) => Promise<void>; onRemoveAction: (g: string, a: string) => Promise<void>; onAddNote: (g: string, k: 'works' | 'doesnt', b: string) => Promise<void> }) {
+  const [wk, setWk] = useState(''); const [dn, setDn] = useState('');
   return (
     <div className="goal-tools">
-      <GoalSection title="Daily action" value={at} onChange={setAt} placeholder="Add daily action" onAdd={() => onAddAction(goal._id, at).then(() => setAt(''))}>
-        {goal.actions.map((a) => (
-          <div className="daily-action-row" key={a._id}>
-            <button className="check-row" onClick={() => void onToggleAction(goal._id, a._id)}>
-              <span className={completed.has(a._id) ? 'dot done' : 'dot'}><Check size={13} /></span>{a.title}
-            </button>
-            <button className="section-icon-button daily-action-delete" type="button" onClick={() => void onRemoveAction(goal._id, a._id)} aria-label={`Delete ${a.title}`}><Trash2 size={15} /></button>
-          </div>
-        ))}
-      </GoalSection>
+      <NextDayTaskSection goal={goal} completed={completed} onAddAction={onAddAction} onEditAction={onEditAction} onToggleAction={onToggleAction} onRemoveAction={onRemoveAction} />
       <NotePanel title="What works" value={wk} onChange={setWk} notes={goal.notes.filter((n) => n.kind === 'works').map((n) => n.body)} onAdd={() => onAddNote(goal._id, 'works', wk).then(() => setWk(''))} />
       <NotePanel title="What doesn't work" value={dn} onChange={setDn} notes={goal.notes.filter((n) => n.kind === 'doesnt').map((n) => n.body)} onAdd={() => onAddNote(goal._id, 'doesnt', dn).then(() => setDn(''))} />
+    </div>
+  );
+}
+
+const DEFAULT_TASK_TIME = '09:00';
+
+function NextDayTaskSection({ goal, completed, onAddAction, onEditAction, onToggleAction, onRemoveAction }: { goal: Goal; completed: Set<string>; onAddAction: (g: string, t: string, time: string) => Promise<void>; onEditAction: (g: string, a: string, t: string, time: string) => Promise<void>; onToggleAction: (g: string, a: string) => Promise<void>; onRemoveAction: (g: string, a: string) => Promise<void> }) {
+  const [adding, setAdding] = useState(false);
+  const [open, setOpen] = useState(true);
+  const [title, setTitle] = useState('');
+  const [time, setTime] = useState(DEFAULT_TASK_TIME);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editTime, setEditTime] = useState(DEFAULT_TASK_TIME);
+
+  async function submitAdd(event?: FormEvent) {
+    event?.preventDefault();
+    if (!title.trim()) return;
+    await onAddAction(goal._id, title.trim(), time);
+    setTitle('');
+    setTime(DEFAULT_TASK_TIME);
+    setAdding(false);
+  }
+
+  function startEdit(action: GoalAction) {
+    setEditingId(action._id);
+    setEditTitle(action.title);
+    setEditTime(action.time || DEFAULT_TASK_TIME);
+  }
+
+  async function submitEdit(event?: FormEvent) {
+    event?.preventDefault();
+    if (!editingId || !editTitle.trim()) return;
+    await onEditAction(goal._id, editingId, editTitle.trim(), editTime);
+    setEditingId(null);
+  }
+
+  return (
+    <div className="sub-panel">
+      <div className="goal-section-head">
+        <h3>Next day task</h3>
+        <div>
+          {!adding && <button className="section-icon-button" type="button" onClick={() => setAdding(true)} aria-label="Add next day task"><Plus size={15} /></button>}
+          <button className="section-icon-button" type="button" onClick={() => setOpen((current) => !current)} aria-label={`${open ? 'Hide' : 'Show'} next day tasks`}><ChevronDown className={open ? '' : 'is-closed'} size={17} /></button>
+        </div>
+      </div>
+      <p className="next-day-hint">Make it specific, set a time, and an alarm will go off tomorrow at that time.</p>
+      <AnimatePresence>
+        {adding && (
+          <motion.form className="mini-form section-add-form next-day-form" initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} onSubmit={submitAdd}>
+            <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Specific task for tomorrow" autoFocus />
+            <input className="next-day-time-input" type="time" value={time} onChange={(event) => setTime(event.target.value)} aria-label="Alarm time" />
+            <button className="section-icon-button section-submit-button" type="submit" aria-label="Save next day task"><Plus size={18} strokeWidth={2.4} /></button>
+          </motion.form>
+        )}
+      </AnimatePresence>
+      {open && (
+        <div className="goal-section-body">
+          {goal.actions.map((action) => (
+            editingId === action._id ? (
+              <motion.form className="mini-form section-add-form next-day-form" key={action._id} initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} onSubmit={submitEdit}>
+                <input value={editTitle} onChange={(event) => setEditTitle(event.target.value)} placeholder="Task name" autoFocus />
+                <input className="next-day-time-input" type="time" value={editTime} onChange={(event) => setEditTime(event.target.value)} aria-label="Alarm time" />
+                <button className="section-icon-button section-submit-button" type="submit" aria-label="Save changes"><Check size={18} strokeWidth={2.4} /></button>
+                <button className="section-icon-button" type="button" onClick={() => setEditingId(null)} aria-label="Cancel edit"><Plus className="is-closed" size={18} /></button>
+              </motion.form>
+            ) : (
+              <div className="daily-action-row next-day-row" key={action._id}>
+                <button className="check-row" onClick={() => void onToggleAction(goal._id, action._id)}>
+                  <span className={completed.has(action._id) ? 'dot done' : 'dot'}><Check size={13} /></span>
+                  <span className="next-day-title">{action.title}</span>
+                  {action.time && <span className="next-day-time">{formatTaskTime(action.time)}</span>}
+                </button>
+                <button className="section-icon-button next-day-edit" type="button" onClick={() => startEdit(action)} aria-label={`Edit ${action.title}`}><Pencil size={14} /></button>
+                <button className="section-icon-button daily-action-delete" type="button" onClick={() => void onRemoveAction(goal._id, action._id)} aria-label={`Delete ${action.title}`}><Trash2 size={15} /></button>
+              </div>
+            )
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -1203,7 +1402,11 @@ export function App() {
   }
 
   async function saveSettings(next: Settings) {
-    if (next.notificationsEnabled !== false) void ensureNotificationPermission();
+    if (next.notificationsEnabled !== false) {
+      void ensureNotificationPermission().then((allowed) => { if (allowed) void ensurePushSubscription(); });
+    } else {
+      void removePushSubscription();
+    }
     if (demo || !user) {
       setSettings(next);
       return;
@@ -1300,6 +1503,48 @@ export function App() {
       clearNightlyMissed();
     };
   }, [demo, loading, settings, user]);
+
+  useEffect(() => {
+    if (loading || !user || demo || !notificationsAllowed(settings)) return;
+    let active = true;
+    let cancels: Array<() => void> = [];
+
+    const clearAlarms = () => { cancels.forEach((cancel) => cancel()); cancels = []; };
+
+    async function armAlarms() {
+      clearAlarms();
+      const data = await api<{ goals: Goal[] }>('/api/goals').catch(() => null);
+      if (!active || !data) return;
+      data.goals.forEach((goal) => {
+        goal.actions.forEach((action) => {
+          if (!action.time) return;
+          cancels.push(scheduleTaskAlarm(action.time, () => void fireTaskAlarm(goal.title, action)));
+        });
+      });
+    }
+
+    void ensureNotificationPermission().then((allowed) => { if (allowed) void armAlarms(); });
+    const onChange = () => void armAlarms();
+    window.addEventListener(GOAL_ALARMS_CHANGED_EVENT, onChange);
+
+    // Register Web Push so the same alarms fire even when the app is closed.
+    void ensurePushSubscription();
+
+    return () => {
+      active = false;
+      clearAlarms();
+      window.removeEventListener(GOAL_ALARMS_CHANGED_EVENT, onChange);
+    };
+  }, [demo, loading, settings, user]);
+
+  useEffect(() => {
+    if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
+    const onMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'play-alarm') playAlarmSound();
+    };
+    navigator.serviceWorker.addEventListener('message', onMessage);
+    return () => navigator.serviceWorker.removeEventListener('message', onMessage);
+  }, []);
 
   const isDemoTour = !user && !showAuth;
   const activeDemoStep = DEMO_STEPS[demoStepIndex];

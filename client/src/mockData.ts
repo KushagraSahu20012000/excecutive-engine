@@ -27,8 +27,8 @@ export const MOCK_GOALS: Goal[] = [
     description: 'Ship the first public version to 100 users.',
     deadlineAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
     actions: [
-      { _id: 'a1', title: 'Write README and setup docs' },
-      { _id: 'a2', title: 'Test on real Android device' }
+      { _id: 'a1', title: 'Write README and setup docs', time: '09:00' },
+      { _id: 'a2', title: 'Test on real Android device', time: '18:30' }
     ],
     notes: [
       { _id: 'n1', kind: 'works', body: 'Working in 2-hour deep focus blocks' },
@@ -41,7 +41,7 @@ export const MOCK_GOALS: Goal[] = [
     title: 'Build consistent sleep schedule',
     description: 'Lights out by 23:00, up by 07:00 for 30 consecutive days.',
     deadlineAt: new Date(Date.now() + 28 * 24 * 60 * 60 * 1000).toISOString(),
-    actions: [{ _id: 'a3', title: 'No screens after 22:30' }],
+    actions: [{ _id: 'a3', title: 'No screens after 22:30', time: '22:30' }],
     notes: [{ _id: 'n3', kind: 'works', body: 'Blackout curtains' }],
     completions: []
   }

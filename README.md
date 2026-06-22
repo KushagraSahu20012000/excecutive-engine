@@ -135,7 +135,12 @@ The production client build is emitted from `client/dist`.
    MONGODB_DB=executive_engine
    JWT_SECRET=use-a-long-random-secret
    CLIENT_ORIGIN=https://your-vercel-domain.vercel.app
+   VAPID_PUBLIC_KEY=your-vapid-public-key
+   VAPID_PRIVATE_KEY=your-vapid-private-key
+   VAPID_SUBJECT=mailto:you@example.com
    ```
+
+- Web Push alarms: generate a VAPID key pair once with `node -e "console.log(require('web-push').generateVAPIDKeys())"` and set the three `VAPID_*` variables. The same `VAPID_PUBLIC_KEY` must be present on the backend that serves `/api/push/public-key`. Without these keys the alarm scheduler stays disabled and only in-app alarms fire. The backend must be an always-on process (the scheduler runs every 30s); on free tiers that sleep, add a keep-alive ping to `/api/health`.
 
 - Container image for backend deploy is defined in `server/Dockerfile` (with ignore rules in `server/.dockerignore`) and reused by the HF deploy workflow.
 
