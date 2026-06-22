@@ -19,14 +19,17 @@ function buildApiUrl(path: string) {
 
 export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
   let response: Response;
+  const hasBody = typeof options.body !== 'undefined' && options.body !== null;
+  const headers = new Headers(options.headers || {});
+
+  if (!headers.has('Content-Type') && hasBody && !(options.body instanceof FormData)) {
+    headers.set('Content-Type', 'application/json');
+  }
 
   try {
     response = await fetch(buildApiUrl(path), {
       credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-      },
+      headers,
       ...options
     });
   } catch (_error) {
