@@ -6,6 +6,17 @@ import { User } from '../models/User.js';
 
 const router = express.Router();
 
+function parseAuthPayload(request) {
+  if (typeof request.body === 'string') {
+    try {
+      return JSON.parse(request.body);
+    } catch {
+      return {};
+    }
+  }
+  return request.body || {};
+}
+
 function presentUser(user) {
   return {
     id: user.id,
@@ -16,9 +27,10 @@ function presentUser(user) {
 }
 
 router.post('/register', async (request, response) => {
-  const email = String(request.body.email || '').trim().toLowerCase();
-  const password = String(request.body.password || '');
-  const displayName = String(request.body.displayName || '').trim();
+  const body = parseAuthPayload(request);
+  const email = String(body.email || '').trim().toLowerCase();
+  const password = String(body.password || '');
+  const displayName = String(body.displayName || '').trim();
 
   if (!email || !password || !displayName) {
     return response.status(400).json({ message: 'displayName, email, and password are required' });
@@ -48,8 +60,9 @@ router.post('/register', async (request, response) => {
 });
 
 router.post('/login', async (request, response) => {
-  const email = String(request.body.email || '').trim().toLowerCase();
-  const password = String(request.body.password || '');
+  const body = parseAuthPayload(request);
+  const email = String(body.email || '').trim().toLowerCase();
+  const password = String(body.password || '');
 
   if (!email || !password) {
     return response.status(400).json({ message: 'email and password are required' });

@@ -87,6 +87,7 @@ export function createApp() {
     next();
   });
   app.use(express.json());
+  app.use(express.text({ type: 'text/plain' }));
   app.use(cookieParser());
   app.use(morgan('dev'));
 

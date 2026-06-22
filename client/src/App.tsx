@@ -384,7 +384,11 @@ function Login({ onAuth, initialMode = 'login' }: { onAuth: (user: User) => void
     try {
       const path = mode === 'signup' ? '/api/session/register' : '/api/session/login';
       const payload = mode === 'signup' ? { displayName, email, password } : { email, password };
-      const response = await api<{ user: User }>(path, { method: 'POST', ...jsonBody(payload) });
+      const response = await api<{ user: User }>(path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify(payload)
+      });
       onAuth(response.user);
     } catch (authError) {
       setError(authError instanceof Error ? authError.message : 'Authentication failed');
