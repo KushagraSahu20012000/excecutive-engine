@@ -79,7 +79,7 @@ function deadlineLeadTimeHistogram(deadlines) {
 
 router.get('/', async (request, response) => {
   await Deadline.updateMany(
-    { userId: request.user._id, outcome: 'pending', dueAt: { $lt: new Date() } },
+    { userId: request.user._id, outcome: 'pending', dueAt: { $lt: new Date() }, deletedAt: null },
     { outcome: 'fail' }
   );
 
@@ -127,10 +127,15 @@ router.get('/', async (request, response) => {
   });
 
   const completionKeys = new Set(completions.map((completion) => `${String(completion.taskId)}:${completion.date}`));
+  const missedWindowIsWeek = request.query.missedWindow === 'week';
+  const sevenDaysAgoDate = new Date(today);
+  sevenDaysAgoDate.setDate(today.getDate() - 6);
+  const sevenDaysAgoKey = localDateKey(sevenDaysAgoDate);
   const missedTasks = activeTasks
     .map((task) => {
       const missed = taskDatesFromCreation(task, settings, today)
         .filter((dateKey) => !completionKeys.has(`${String(task._id)}:${dateKey}`))
+        .filter((dateKey) => !missedWindowIsWeek || dateKey >= sevenDaysAgoKey)
         .length;
       return { title: task.title, missed };
     })

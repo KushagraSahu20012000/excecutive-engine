@@ -7,7 +7,8 @@ const deadlineSchema = new mongoose.Schema(
     description: { type: String, default: '' },
     dueAt: { type: Date, required: true },
     outcome: { type: String, enum: ['pending', 'pass', 'fail'], default: 'pending' },
-    passedAt: Date
+    passedAt: Date,
+    deletedAt: { type: Date, default: null }
   },
   { timestamps: true }
 );

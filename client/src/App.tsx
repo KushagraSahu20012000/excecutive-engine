@@ -1122,15 +1122,22 @@ function FireworkBurst() {
 
 function StatsPage({ demo }: { demo: boolean }) {
   const [stats, setStats] = useState(demo ? MOCK_STATS : { weekly: [] as { label: string; percent: number }[], deadlineRatio: [] as { name: string; value: number }[], missedTasks: [] as { title: string; missed: number }[], deadlineLeadTime: [] as { label: string; count: number }[], streak: 0 });
+  const [missedWindow, setMissedWindow] = useState<'week' | 'all'>('week');
+  const missedWindowRef = useRef(missedWindow);
+  missedWindowRef.current = missedWindow;
   const hasMissedTasks = stats.missedTasks.length > 0;
   const hasDeadlines = stats.deadlineRatio.some((entry) => entry.value > 0);
   const hasDeadlineLeadTime = stats.deadlineLeadTime.some((entry) => entry.count > 0);
 
   useEffect(() => {
     if (demo) return;
+    void api<typeof stats>(`/api/stats?missedWindow=${missedWindow}`).then(setStats).catch(() => undefined);
+  }, [missedWindow, demo]);
 
-    const loadStats = () => api<typeof stats>('/api/stats').then(setStats).catch(() => undefined);
-    void loadStats();
+  useEffect(() => {
+    if (demo) return;
+
+    const loadStats = () => api<typeof stats>(`/api/stats?missedWindow=${missedWindowRef.current}`).then(setStats).catch(() => undefined);
 
     const wsEnabled = import.meta.env.VITE_ENABLE_WS !== 'false';
     if (!wsEnabled) {
@@ -1191,7 +1198,13 @@ function StatsPage({ demo }: { demo: boolean }) {
         </div>
       </article>
       <article className="card chart-card span-12">
-        <h2>Most missed tasks</h2>
+        <div className="chart-card-header">
+          <h2>Most missed tasks</h2>
+          <div className="segmented">
+            <button className={missedWindow === 'week' ? 'active' : ''} onClick={() => setMissedWindow('week')}>Past week</button>
+            <button className={missedWindow === 'all' ? 'active' : ''} onClick={() => setMissedWindow('all')}>All time</button>
+          </div>
+        </div>
         <div className="chart-frame">
           {hasMissedTasks ? (
             <ResponsiveContainer width="100%" height="100%">

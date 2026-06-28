@@ -8,14 +8,14 @@ router.use(requireAuth);
 
 async function failOverdueDeadlines(userId) {
   await Deadline.updateMany(
-    { userId, outcome: 'pending', dueAt: { $lt: new Date() } },
+    { userId, outcome: 'pending', dueAt: { $lt: new Date() }, deletedAt: null },
     { outcome: 'fail' }
   );
 }
 
 router.get('/', async (request, response) => {
   await failOverdueDeadlines(request.user._id);
-  const deadlines = await Deadline.find({ userId: request.user._id }).sort({ dueAt: 1 });
+  const deadlines = await Deadline.find({ userId: request.user._id, deletedAt: null }).sort({ dueAt: 1 });
   response.json({ deadlines });
 });
 
@@ -48,7 +48,10 @@ router.patch('/:deadlineId', async (request, response) => {
 });
 
 router.delete('/:deadlineId', async (request, response) => {
-  await Deadline.deleteOne({ _id: request.params.deadlineId, userId: request.user._id });
+  await Deadline.findOneAndUpdate(
+    { _id: request.params.deadlineId, userId: request.user._id },
+    { $set: { deletedAt: new Date() } }
+  );
   broadcastStatsChanged(request.user._id);
   response.json({ ok: true });
 });
