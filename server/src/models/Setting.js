@@ -6,7 +6,9 @@ const settingSchema = new mongoose.Schema(
     includeSaturday: { type: Boolean, default: false },
     includeSunday: { type: Boolean, default: false },
     anchorTaskId: { type: mongoose.Schema.Types.ObjectId, ref: 'Task', default: null },
-    notificationsEnabled: { type: Boolean, default: true }
+    notificationsEnabled: { type: Boolean, default: true },
+    nightlyUpdateFiredKey: { type: String, default: null },
+    nightlyMissedFiredKey: { type: String, default: null }
   },
   { timestamps: true }
 );

@@ -142,9 +142,13 @@ function demoTargetSelector(focus: DemoStep['focus']) {
 }
 
 function hasTwoWeekDrop(weekly: { percent: number }[]) {
-  if (weekly.length < 3) return false;
-  const [twoWeeksAgo, lastWeek, currentWeek] = weekly.slice(-3);
-  return currentWeek.percent < lastWeek.percent && lastWeek.percent < twoWeeksAgo.percent;
+  // Ignore the current, still-incomplete week: its denominator counts days that
+  // have not happened yet, so its percent is artificially low mid-week. A real
+  // "down for two weeks" needs two consecutive declines across completed weeks.
+  const completed = weekly.slice(0, -1);
+  if (completed.length < 3) return false;
+  const [threeWeeksAgo, twoWeeksAgo, lastWeek] = completed.slice(-3);
+  return lastWeek.percent < twoWeeksAgo.percent && twoWeeksAgo.percent < threeWeeksAgo.percent;
 }
 
 const notificationStamp = () => todayKey();
@@ -236,22 +240,6 @@ function markNotificationSent(key: string) {
 
 function notificationWasSent(key: string) {
   return window.localStorage.getItem(key) !== null;
-}
-
-function scheduleDaily(hour: number, minute: number, callback: () => void) {
-  let timeoutId = 0;
-  const scheduleNext = () => {
-    const now = new Date();
-    const parts = istParts(now);
-    let next = new Date(`${parts.year}-${parts.month}-${parts.day}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00+05:30`);
-    if (next <= now) next = new Date(next.getTime() + 24 * 60 * 60 * 1000);
-    timeoutId = window.setTimeout(() => {
-      callback();
-      scheduleNext();
-    }, next.getTime() - now.getTime());
-  };
-  scheduleNext();
-  return () => window.clearTimeout(timeoutId);
 }
 
 function formatTaskTime(time?: string) {
@@ -1479,45 +1467,20 @@ export function App() {
         })
         .forEach((deadline) => {
           void showBrowserNotification(`Deadline: ${deadline.title}`, {
-            body: `Due ${istDisplay(deadline.dueAt, { dateStyle: 'medium', timeStyle: 'short' })} IST. This will keep returning while it is under 24 hours away.`,
-            tag: `executive-engine-deadline-${deadline._id}`
+            body: `Due ${istDisplay(deadline.dueAt, { dateStyle: 'medium', timeStyle: 'short' })} IST. This stays in your notification panel until the deadline passes or you clear it.`,
+            tag: `executive-engine-deadline-${deadline._id}`,
+            silent: true
           });
         });
     }
 
-    async function nightlyStatusCheck(onlyIfMissed: boolean) {
-      const today = todayKey();
-      const [taskData, goalData] = await Promise.all([
-        api<{ tasks: Task[]; completions: Completion[] }>('/api/tasks').catch(() => null),
-        api<{ goals: Goal[] }>('/api/goals').catch(() => null)
-      ]);
-      if (!taskData || !goalData) return;
-      const completedTaskIds = new Set(taskData.completions.filter((completion) => completion.date === today).map((completion) => completion.taskId));
-      const missedTasks = taskData.tasks.filter((task) => !completedTaskIds.has(task._id));
-      const goalActions = goalData.goals.flatMap((goal) => goal.actions.map((action) => ({ goal, action })));
-      const completedGoalActionIds = new Set(goalData.goals.flatMap((goal) => goal.completions.filter((completion) => completion.date === today).map((completion) => completion.actionId)));
-      const missedGoalActions = goalActions.filter(({ action }) => !completedGoalActionIds.has(action._id));
-      if (!taskData.tasks.length && !goalActions.length) return;
-      if (onlyIfMissed && !missedTasks.length && !missedGoalActions.length) return;
-      const kind = onlyIfMissed ? 'nightly-missed' : 'nightly-update';
-      const key = notificationKey(kind, today);
-      if (notificationWasSent(key)) return;
-      const title = onlyIfMissed ? 'You still have unchecked updates' : 'Update your task status';
-      const body = missedGoalActions.length
-        ? `${missedTasks.length} tasks and ${missedGoalActions.length} goal actions need today's status.`
-        : `${missedTasks.length} tasks need today's status.`;
-      void showBrowserNotification(title, { body, tag: `executive-engine-${kind}` }).then((sent) => { if (sent) markNotificationSent(key); });
-    }
-
+    // Nightly status reminders (11 PM / 11:45 PM) are delivered server-side via Web
+    // Push so they fire even when the app is closed. See server/src/utils/scheduler.js.
     void ensureNotificationPermission().then((allowed) => { if (allowed) void notifyDeadlines(); });
     const deadlineInterval = window.setInterval(() => void notifyDeadlines(), 15 * 60 * 1000);
-    const clearNightlyUpdate = scheduleDaily(23, 0, () => void nightlyStatusCheck(false));
-    const clearNightlyMissed = scheduleDaily(23, 45, () => void nightlyStatusCheck(true));
 
     return () => {
       window.clearInterval(deadlineInterval);
-      clearNightlyUpdate();
-      clearNightlyMissed();
     };
   }, [demo, loading, settings, user]);
 
